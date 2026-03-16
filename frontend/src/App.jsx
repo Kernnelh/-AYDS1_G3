@@ -3,7 +3,7 @@ import { Login } from "./pages/Login"
 import { RegisterPatient } from "./pages/RegisterPatient"
 import { RegisterMedic } from "./pages/RegisterMedic"
 import { DashboardPatient } from "./pages/DashboardPatient"
-// import { DashboardMedic } from "./pages/DashboardMedic"
+import { DashboardMedic } from "./pages/DashboardMedic"
 
 function App() {
   
@@ -13,7 +13,7 @@ function App() {
       <Route path="/RegisterPatient" element={<RegisterPatient/>}/>
       <Route path="/RegisterMedic" element={<RegisterMedic/>}/>
       <Route path="/DashboardPatient" element={<DashboardPatient/>}/>
-      {/* <Route path="/DashboardMedic" element={<DashboardMedic/>}/> */}
+      {<Route path="/DashboardMedic" element={<DashboardMedic/>}/>}
     </Routes>
   )
 }

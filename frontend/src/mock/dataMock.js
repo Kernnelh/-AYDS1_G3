@@ -189,3 +189,46 @@ export const pacienteMock = {
   estado: 'Aprobado',
   fecha_registro: '2026-01-10T14:30:00',
 };
+
+
+
+
+export const pacientesMock = [
+  {
+    id_paciente: 1,
+    nombre: 'Juan',
+    apellido: 'Pérez',
+    dpi: '1234567890101',
+    genero: 'Masculino',
+    direccion: 'Zona 1, Ciudad',
+    telefono: '55551111',
+    fecha_nacimiento: '1990-05-15',
+    correo: 'juan.perez@email.com',
+    estado: 'Aprobado',
+  },
+  {
+    id_paciente: 2,
+    nombre: 'María',
+    apellido: 'Gómez',
+    dpi: '2345678901012',
+    genero: 'Femenino',
+    direccion: 'Zona 2, Ciudad',
+    telefono: '55552222',
+    fecha_nacimiento: '1985-10-20',
+    correo: 'maria.gomez@email.com',
+    estado: 'Aprobado',
+  },
+  {
+    id_paciente: 3,
+    nombre: 'Carlos',
+    apellido: 'López',
+    dpi: '3456789010123',
+    genero: 'Masculino',
+    direccion: 'Zona 3, Ciudad',
+    telefono: '55553333',
+    fecha_nacimiento: '1992-03-10',
+    correo: 'carlos.lopez@email.com',
+    estado: 'Aprobado',
+  },
+  // ... más pacientes según necesites
+];

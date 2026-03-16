@@ -1,242 +1,248 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from 'react';
-
-// Estilos y componentes
-import { Size } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/Styles";
 import { Button1 } from "../components/Button1";
-import { IconButton } from "../components/IconButton";
+import { PendingAppointmentsMedic } from "../components/PendingAppointmentsMedic";
+import { TreatmentForm } from "../components/TreatmentForm";
+import { SetSchedule } from "../components/SetSchedule";
+import { AppointmentHistoryMedic } from "../components/AppointmentHistoryMedic";
+import { MedicProfile } from "../components/MedicProfile";
 
-// React Icons
-import { MdArrowBack, MdLogout, MdEdit, MdVerifiedUser } from "react-icons/md";
+// DATOS QUEMADOS - REEMPLAZAR CON DATOS DEL BACKEND
+import { medicosMock, citasMock, pacientesMock } from "../mock/dataMock";
 
 export const DashboardMedic = () => {
-  const navigate = useNavigate();
-  const [medicData, setMedicData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Estados para navegación
+  const [activeSection, setActiveSection] = useState('citas_pendientes');
 
-  useEffect(() => {
-    // Obtener datos del médico del localStorage o de una API
-    const fetchMedicData = async () => {
-      try {
-        // Aquí puedes obtener del localStorage temporalmente
-        const storedData = localStorage.getItem('userDataMedic');
-        if (storedData) {
-          setMedicData(JSON.parse(storedData));
-        } else {
-          // O hacer una llamada a la API
-          // const response = await fetch('/api/medic/profile');
-          // const data = await response.json();
-          // setMedicData(data);
-          throw new Error('No hay datos de médico');
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Estados para médico y citas
+  const [medico, setMedico] = useState(medicosMock[0]); // REEMPLAZAR CON DATOS DEL MÉDICO AUTENTICADO
+  const [citas, setCitas] = useState(citasMock);
+  const [pacientes, setPacientes] = useState(pacientesMock);
 
-    fetchMedicData();
-  }, []);
+  // Estados para atender paciente
+  const [treatmentModal, setTreatmentModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
 
-  const handleLogout = () => {
-    localStorage.removeItem('userDataMedic');
-    localStorage.removeItem('authToken');
-    navigate('/');
+  // Estados para cancelar cita
+  const [cancelingId, setCancelingId] = useState(null);
+
+  // Filtrar citas pendientes del médico actual
+  const pendingAppointments = citas
+    .filter(c => c.id_medico === medico.id_medico && c.estado === 'Pendiente')
+    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+  // Manejador para abrir modal de tratamiento
+  const handleAttendClick = (appointment) => {
+    setSelectedAppointment(appointment);
+    setTreatmentModal(true);
   };
 
-  const handleGoBack = () => {
-    navigate('/');
-  };
+  // Manejador para guardar tratamiento
+  const handleSaveTreatment = (treatment) => {
+    if (!selectedAppointment) return;
 
-  if (loading) {
-    return (
-      <div className={`${Background.BACKGROUND} flex items-center justify-center h-screen`}>
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <p className={`${Size.LARGE}`}>Cargando...</p>
-        </motion.div>
-      </div>
+    const updatedCitas = citas.map(cita =>
+      cita.id_cita === selectedAppointment.id_cita
+        ? { ...cita, estado: 'Atendida', tratamiento: treatment }
+        : cita
     );
-  }
+    setCitas(updatedCitas);
+    setTreatmentModal(false);
+    setSelectedAppointment(null);
+  };
+
+  // Manejador para cancelar cita
+  const handleCancelAppointment = (appointmentId) => {
+    const appointment = citas.find(c => c.id_cita === appointmentId);
+    if (!appointment) return;
+
+    // Aquí iría la lógica de envío de correo al paciente
+    console.log('📧 Enviar correo de cancelación a:', pacientes.find(p => p.id_paciente === appointment.id_paciente)?.correo);
+
+    const updatedCitas = citas.map(cita =>
+      cita.id_cita === appointmentId
+        ? { ...cita, estado: 'Cancelada_Medico', fecha_cancelacion: new Date().toISOString() }
+        : cita
+    );
+    setCitas(updatedCitas);
+    setCancelingId(null);
+  };
+
+  // Manejador para actualizar horario
+  const handleUpdateSchedule = (newSchedule) => {
+    // Validar que no haya citas fuera del nuevo rango horario
+    const conflictingAppointments = citas.filter(c => {
+      if (c.id_medico !== medico.id_medico || c.estado === 'Cancelada_Paciente' || c.estado === 'Cancelada_Medico') {
+        return false;
+      }
+      const citaHour = parseInt(c.hora.split(':')[0]);
+      const newStart = parseInt(newSchedule.hora_inicio.split(':')[0]);
+      const newEnd = parseInt(newSchedule.hora_fin.split(':')[0]);
+      return citaHour < newStart || citaHour >= newEnd;
+    });
+
+    if (conflictingAppointments.length > 0) {
+      alert('⚠️ No puedes actualizar tu horario mientras haya citas activas fuera del nuevo rango. Reprograma o cancela esas citas primero.');
+      return;
+    }
+
+    setMedico({
+      ...medico,
+      horario_inicio: newSchedule.hora_inicio,
+      horario_fin: newSchedule.hora_fin,
+      dias_atencion: newSchedule.dias_atencion
+    });
+  };
+
+  // Manejador para actualizar perfil
+  const handleUpdateProfile = (updatedProfile) => {
+    setMedico(updatedProfile);
+  };
 
   return (
-    <div className={`${Background.BACKGROUND} min-h-screen py-10`}>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-6xl mx-auto px-4"
-      >
+    <div className={`min-h-screen ${Background.BACKGROUND} p-4 md:p-8`}>
+      <div className="max-w-7xl mx-auto">
+        
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <IconButton
-              id='iconBack'
-              icon={<MdArrowBack className="text-gray-700 text-2xl" />}
-              style='w-[3vh] h-[3vh] max-w-[30px] max-h-[30px] cursor-pointer hover:bg-gray-200'
-              onClick={handleGoBack}
-            />
-          </div>
-          <h1 className={`${Size.EXTRALARGE} text-center flex-1`}>
-            Bienvenido Dr./Dra. {medicData?.nombre}
-          </h1>
-          <IconButton
-            id='iconLogout'
-            icon={<MdLogout className="text-red-600 text-2xl" />}
-            style='w-[3vh] h-[3vh] max-w-[30px] max-h-[30px] cursor-pointer hover:bg-red-100'
-            onClick={handleLogout}
-          />
-        </div>
-
-        {/* Contenido principal */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          
-          {/* Card de Información Profesional */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="lg:col-span-2 bg-[#FAFAFF] rounded-xl shadow-[0px_0px_50px_10px_rgba(0,0,0,0.1)] p-8"
-          >
-            <div className="flex justify-between items-center mb-6">
-              <h2 className={`${Size.LARGE}`}>Mi Información Profesional</h2>
-              <IconButton
-                id='iconEdit'
-                icon={<MdEdit className="text-blue-600 text-xl" />}
-                style='w-[2.5vh] h-[2.5vh] max-w-[25px] max-h-[25px] cursor-pointer hover:bg-blue-100'
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Nombre Completo</p>
-                <p className={`${Size.LARGE} font-semibold`}>
-                  {medicData?.nombre} {medicData?.apellido}
-                </p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>DPI</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.dpi}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Número Colegiado</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.numero_colegiado}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Especialidad</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.especialidad}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Correo Electrónico</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.correo}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Teléfono</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.telefono}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Género</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.genero}</p>
-              </div>
-
-              <div className="border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Dirección Clínica</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.direccion_clinica}</p>
-              </div>
-
-              <div className="md:col-span-2 border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Dirección Personal</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.direccion}</p>
-              </div>
-
-              <div className="md:col-span-2 border-b-2 border-gray-200 pb-4">
-                <p className={`${Size.MEDIUM} text-gray-500`}>Fecha de Nacimiento</p>
-                <p className={`${Size.LARGE} font-semibold`}>{medicData?.fecha_nacimiento}</p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Card de Foto de perfil */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-[#FAFAFF] rounded-xl shadow-[0px_0px_50px_10px_rgba(0,0,0,0.1)] p-8 flex flex-col items-center justify-center"
-          >
-            <div className="w-32 h-32 bg-gray-300 rounded-full mb-4 flex items-center justify-center relative">
-              {medicData?.fotografia ? (
-                <img
-                  src={medicData.fotografia}
-                  alt="Perfil"
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className={`${Size.LARGE} text-gray-500`}>Sin foto</span>
-              )}
-              <div className="absolute bottom-0 right-0 bg-green-500 rounded-full p-2">
-                <MdVerifiedUser className="text-white text-lg" />
-              </div>
-            </div>
-            <p className={`${Size.MEDIUM} text-center font-semibold`}>
-              Dr./Dra. {medicData?.nombre}
-            </p>
-            <p className={`${Size.SMALL} text-gray-500 text-center mt-2`}>
-              {medicData?.especialidad}
-            </p>
-          </motion.div>
-        </div>
-
-        {/* Acciones rápidas */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-[#FAFAFF] rounded-xl shadow-[0px_0px_50px_10px_rgba(0,0,0,0.1)] p-8"
+          className="flex justify-between items-center mb-8 bg-white rounded-lg p-6 shadow-md"
         >
-          <h2 className={`${Size.LARGE} mb-6`}>Acciones Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button1
-              nombre='asdads'
-              id='verCitasMed'
-              type='button'
-              color={CButton.GRADIENT}
-              onClick={() => console.log('Ver citas')}
-            />
-            <Button1
-              nombre='Ver Pacientes'
-              id='verPacientes'
-              type='button'
+          <div>
+            <h1 className={`${Size.EXTRALARGE} text-gray-800`}>Bienvenido, Dr(a). {medico.nombre}</h1>
+            <p className={`${Size.MEDIUM} text-gray-600`}>Gestiona tus citas y horarios</p>
+          </div>
+          <div className="flex gap-4">
+            <Button1 
+              nombre="Cerrar sesión" 
+              id="logout"
+              type='link' 
+              link='/'
               color={CButton.MATE}
-              onClick={() => console.log('Ver pacientes')}
-            />
-            <Button1
-              nombre='Crear Receta'
-              id='crearReceta'
-              type='button'
-              color={CButton.MATE}
-              onClick={() => console.log('Crear receta')}
-            />
-            <Button1
-              nombre='Editar Perfil'
-              id='editarPerfilMed'
-              type='button'
-              color={CButton.MATE}
-              onClick={() => console.log('Editar perfil')}
             />
           </div>
         </motion.div>
-      </motion.div>
+
+        {/* Navegación de Secciones */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-wrap gap-3 mb-8 bg-white rounded-lg p-4 shadow-md"
+        >
+          <button
+            onClick={() => setActiveSection('citas_pendientes')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeSection === 'citas_pendientes'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Citas Pendientes ({pendingAppointments.length})
+          </button>
+          <button
+            onClick={() => setActiveSection('horarios')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeSection === 'horarios'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Mis Horarios
+          </button>
+          <button
+            onClick={() => setActiveSection('historial')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeSection === 'historial'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Historial de Citas
+          </button>
+          <button
+            onClick={() => setActiveSection('perfil')}
+            className={`px-4 py-2 rounded-lg font-semibold transition ${
+              activeSection === 'perfil'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Mi Perfil
+          </button>
+        </motion.div>
+
+        {/* SECCIÓN: CITAS PENDIENTES */}
+        {activeSection === 'citas_pendientes' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <PendingAppointmentsMedic
+              appointments={pendingAppointments}
+              pacientes={pacientes}
+              onAttend={handleAttendClick}
+              onCancel={() => setCancelingId('confirm')}
+              onConfirmCancel={handleCancelAppointment}
+              cancelingId={cancelingId}
+              setCancelingId={setCancelingId}
+            />
+          </motion.div>
+        )}
+
+        {/* SECCIÓN: HORARIOS */}
+        {activeSection === 'horarios' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <SetSchedule
+              medico={medico}
+              onUpdate={handleUpdateSchedule}
+            />
+          </motion.div>
+        )}
+
+        {/* SECCIÓN: HISTORIAL */}
+        {activeSection === 'historial' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <AppointmentHistoryMedic
+              appointments={citas.filter(c => c.id_medico === medico.id_medico && c.estado !== 'Pendiente')}
+              pacientes={pacientes}
+            />
+          </motion.div>
+        )}
+
+        {/* SECCIÓN: PERFIL */}
+        {activeSection === 'perfil' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <MedicProfile
+              medico={medico}
+              onUpdate={handleUpdateProfile}
+            />
+          </motion.div>
+        )}
+
+        {/* Modal de tratamiento */}
+        {treatmentModal && selectedAppointment && (
+          <TreatmentForm
+            appointment={selectedAppointment}
+            paciente={pacientes.find(p => p.id_paciente === selectedAppointment.id_paciente)}
+            onSave={handleSaveTreatment}
+            onClose={() => {
+              setTreatmentModal(false);
+              setSelectedAppointment(null);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 };
