@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.database import get_db, engine, Base
+from app.api.routes import pacientes
 
 # Esto creará las tablas físicamente en MySQL
-Base.metadata.create_all(bind=engine)
+#Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="API Backend - AYD1",
@@ -31,3 +32,5 @@ def probar_conexion_db(db: Session = Depends(get_db)):
         return {"estado": "Éxito", "mensaje": "¡Conexión a MySQL establecida correctamente!"}
     except Exception as e:
         return {"estado": "Error", "detalle": str(e)}
+    
+app.include_router(pacientes.router, prefix="/pacientes", tags=["Pacientes"])
