@@ -1,7 +1,7 @@
 import { Button } from "@material-tailwind/react";
 import { Link } from "react-router-dom";
 
-import { Size } from "../styles/styles";
+import { Size, SizeBox, CButton, Background } from "../styles/Styles";
 
 export function Button1({nombre, id, type, link, color, className=""}) {
     if (type === 'link'){
