@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from 'react';
 
 // Estilos y componentes
-import { Size, SizeBox, CButton, Background } from "../styles/styles";
+import { Size } from "../styles/Styles";
 import { Button1 } from "../components/Button1";
 import { IconButton } from "../components/IconButton";
 

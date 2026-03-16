@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdSearch, MdClose, MdLogout } from 'react-icons/md';
-import { Size, SizeBox, CButton, Background } from "../styles/styles";
+import { Size, SizeBox, CButton, Background } from "../styles/Styles";
 import { Button1 } from "../components/Button1";
 import { DoctorCard } from "../components/DoctorCard";
 import { DoctorSchedule } from "../components/DoctorSchedule";
@@ -88,7 +88,8 @@ export const DashboardPatient = () => {
             <Button1 
               nombre="Cerrar sesión" 
               id="logout"
-              type="button"
+              type='link' 
+              link='/'
               color={CButton.MATE}
               icon={<MdLogout />}
             />

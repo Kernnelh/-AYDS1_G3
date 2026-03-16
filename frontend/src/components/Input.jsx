@@ -1,5 +1,5 @@
 // Input.jsx
-import { Size } from "../styles/styles";
+import { Size } from "../styles/Styles";
 
 export function Input(type, id, placeholder, icon) {
   return (

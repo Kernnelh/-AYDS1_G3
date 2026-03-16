@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from 'framer-motion';
 
 // Estilos y componentes
-import { Size, SizeBox, CButton, Background } from "../styles/styles";
+import { Size, SizeBox, CButton, Background } from "../styles/Styles";
 import { Button1 } from "../components/Button1";
 import { Input } from "../components/Input";
 import { IconButton } from "../components/IconButton";
