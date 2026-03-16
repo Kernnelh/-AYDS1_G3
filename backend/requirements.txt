@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+PyJWT
+passlib
+python-multipart
+SQLAlchemy
+pymysql
+python-dotenv
