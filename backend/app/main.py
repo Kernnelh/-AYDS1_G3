@@ -9,6 +9,9 @@ from app.api.routes import pacientes, medicos
 
 from app.core.security import create_access_token #de aquí se importa la función para crear tokens JWT
 
+from fastapi.staticfiles import StaticFiles
+from app.api.routes import pacientes, medicos, upload
+
 # Esto creará las tablas físicamente en MySQL
 #Base.metadata.create_all(bind=engine)
 
@@ -50,3 +53,11 @@ def probar_generacion_token():
     
 app.include_router(pacientes.router, prefix="/pacientes", tags=["Pacientes"])
 app.include_router(medicos.router, prefix="/api/medicos", tags=["Médicos"])
+
+
+# Exponer la carpeta estática para las fotos
+import os
+os.makedirs("app/static/fotos", exist_ok=True) # Por seguridad, garantizamos que exista
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+app.include_router(upload.router, prefix="/api/upload", tags=["Uploads"])

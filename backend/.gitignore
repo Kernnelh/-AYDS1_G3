@@ -43,3 +43,9 @@ Thumbs.db
 # ==========================================
 *.db
 *.sqlite3
+
+# ==========================================
+# Ignorar fotos subidas localmente
+# ==========================================
+app/static/fotos/*
+!app/static/fotos/.gitkeep
