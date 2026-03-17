@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.database import get_db, engine, Base
+#RUTA DE LOS ENDPOINTS
 from app.api.routes import pacientes
+from app.api.routes import pacientes, medicos
 
 # Esto creará las tablas físicamente en MySQL
 #Base.metadata.create_all(bind=engine)
@@ -34,3 +36,4 @@ def probar_conexion_db(db: Session = Depends(get_db)):
         return {"estado": "Error", "detalle": str(e)}
     
 app.include_router(pacientes.router, prefix="/pacientes", tags=["Pacientes"])
+app.include_router(medicos.router, prefix="/api/medicos", tags=["Médicos"])
