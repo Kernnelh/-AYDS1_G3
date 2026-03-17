@@ -4,13 +4,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.database import get_db, engine, Base
 #RUTA DE LOS ENDPOINTS
-from app.api.routes import pacientes
-from app.api.routes import pacientes, medicos
-
 from app.core.security import create_access_token #de aquí se importa la función para crear tokens JWT
 
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import pacientes, medicos, upload
+from app.api.routes import pacientes, medicos, upload, admin
+
 
 # Esto creará las tablas físicamente en MySQL
 #Base.metadata.create_all(bind=engine)
@@ -53,6 +51,7 @@ def probar_generacion_token():
     
 app.include_router(pacientes.router, prefix="/pacientes", tags=["Pacientes"])
 app.include_router(medicos.router, prefix="/api/medicos", tags=["Médicos"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Administrador"])
 
 
 # Exponer la carpeta estática para las fotos
