@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.db.database import get_db
 from sqlalchemy import text
+from app.db.database import get_db
+from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPaciente
+from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedico
+from app.schemas.admin import ActualizarEstado
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -41,3 +45,42 @@ async def validar_segundo_factor(
 
     # Si todo está bien, le damos acceso
     return {"mensaje": "Autenticación de segundo factor exitosa. Bienvenido."}
+
+
+# --- T-005.01: Obtener usuarios pendientes ---
+@router.get("/pendientes", tags=["Administrador"])
+def obtener_usuarios_pendientes(db: Session = Depends(get_db)):
+    # Buscamos pacientes pendientes
+    pacientes_pendientes = db.query(Paciente).filter(Paciente.estado == EstadoPaciente.Pendiente).all()
+    
+    # Buscamos médicos pendientes
+    medicos_pendientes = db.query(Medico).filter(Medico.estado == EstadoMedico.Pendiente).all()
+    
+    return {
+        "pacientes": pacientes_pendientes,
+        "medicos": medicos_pendientes
+    }
+
+# --- T-005.02: Cambiar estado de usuario (Aceptar/Rechazar) ---
+@router.patch("/usuarios/{rol}/{id_usuario}/estado", tags=["Administrador"])
+def actualizar_estado_usuario(
+    rol: str, 
+    id_usuario: int, 
+    datos: ActualizarEstado, 
+    db: Session = Depends(get_db)
+):
+    if rol.lower() == "paciente":
+        usuario = db.query(Paciente).filter(Paciente.id_paciente == id_usuario).first()
+    elif rol.lower() == "medico":
+        usuario = db.query(Medico).filter(Medico.id_medico == id_usuario).first()
+    else:
+        raise HTTPException(status_code=400, detail="El rol debe ser 'paciente' o 'medico'")
+
+    if not usuario:
+        raise HTTPException(status_code=404, detail=f"{rol.capitalize()} no encontrado")
+
+    # Actualizamos el estado (ACTIVO o RECHAZADO)
+    usuario.estado = datos.estado
+    db.commit()
+    
+    return {"mensaje": f"Estado del {rol} actualizado exitosamente a {datos.estado.value}"}
