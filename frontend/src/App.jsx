@@ -4,6 +4,7 @@ import { RegisterPatient } from "./pages/RegisterPatient"
 import { RegisterMedic } from "./pages/RegisterMedic"
 import { DashboardPatient } from "./pages/DashboardPatient"
 import { DashboardMedic } from "./pages/DashboardMedic"
+import { DashboardAdmin } from "./pages/DashboardAdmin"
 
 function App() {
   
@@ -13,7 +14,8 @@ function App() {
       <Route path="/RegisterPatient" element={<RegisterPatient/>}/>
       <Route path="/RegisterMedic" element={<RegisterMedic/>}/>
       <Route path="/DashboardPatient" element={<DashboardPatient/>}/>
-      {<Route path="/DashboardMedic" element={<DashboardMedic/>}/>}
+      <Route path="/DashboardMedic" element={<DashboardMedic/>}/>
+      <Route path="/DashboardAdmin" element={<DashboardAdmin/>}/>
     </Routes>
   )
 }

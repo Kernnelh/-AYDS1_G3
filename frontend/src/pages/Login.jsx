@@ -78,6 +78,14 @@ export const Login = () => {
                     <Button1 nombre='Iniciar sesión como Médico' id='iniciarsesionmed' type='link' link='/DashboardMedic' color={CButton.GRADIENT} />
                   </div>
 
+                  {/* Separador */}
+                  <div className="w-full h-px bg-gray-300 my-2"></div>
+
+                  {/* Acceso administrador */}
+                  <div className="w-full flex justify-center">
+                    <Button1 nombre='Acceso de Administrador' id='iniciarsesionadmin' type='link' link='/DashboardAdmin' color='bg-[#353C43]' />
+                  </div>
+
                 </section>
 
               </form>
