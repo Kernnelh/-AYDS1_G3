@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPaciente
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedico
 from app.schemas.admin import ActualizarEstado
+from app.core.security import verificar_token
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -49,13 +50,17 @@ async def validar_segundo_factor(
 
 # --- T-005.01: Obtener usuarios pendientes ---
 @router.get("/pendientes", tags=["Administrador"])
-def obtener_usuarios_pendientes(db: Session = Depends(get_db)):
-    # Buscamos pacientes pendientes
+def obtener_usuarios_pendientes(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token) # <--- ¡AQUÍ ESTÁ EL GUARDIA!
+):
+    # (Opcional) Podemos verificar que quien está entrando realmente tenga el rol de administrador
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="No tienes permisos de administrador")
+
     pacientes_pendientes = db.query(Paciente).filter(Paciente.estado == EstadoPaciente.Pendiente).all()
-    
-    # Buscamos médicos pendientes
     medicos_pendientes = db.query(Medico).filter(Medico.estado == EstadoMedico.Pendiente).all()
-    
+
     return {
         "pacientes": pacientes_pendientes,
         "medicos": medicos_pendientes
