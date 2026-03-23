@@ -12,6 +12,7 @@ export function Input(type, id, placeholder, icon) {
           type={type}
           required
           id={id}
+          name={id}
           className={`h-[40px] md:h-[3.2rem] lg:h-[3.8rem] bg-[#FAFAFF] border border-gray-300 text-gray-900 ${Size.LARGE} rounded-full block w-full pl-[4rem] md:pl-[50px] xl:pl-[4rem] px-5`}
           placeholder={placeholder}
         />

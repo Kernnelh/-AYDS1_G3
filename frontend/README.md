@@ -1,16 +1,50 @@
-# React + Vite
+# Frontend - Guía de Instalación y Ejecución
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Requisitos Previos
 
-Currently, two official plugins are available:
+- Node.js (versión 14 o superior)
+- npm o yarn
+- Git
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Instalación
 
-## React Compiler
+1. **Clonar el repositorio**
+    ```bash
+    git clone <url-del-repositorio>
+    cd frontend
+    ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. **Instalar dependencias**
+    ```bash
+    npm install
+    ```
 
-## Expanding the ESLint configuration
+## Ejecución
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Modo desarrollo
+```bash
+npm run dev
+```
+La aplicación estará disponible en `http://localhost:3000`
+
+### Modo producción
+```bash
+npm run build
+npm run start
+```
+
+## Solución de Problemas
+
+- **Error de dependencias**: Ejecuta `npm install` nuevamente
+- **Puerto en uso**: Cambia el puerto en las variables de entorno
+- **Caché**: Solo de ser necesario elimina `node_modules` y reinstala: `rm -rf node_modules && npm install` <- 
+
+## Estructura del Proyecto
+
+```
+frontend/
+├── src/
+├── public/
+├── package.json
+└── README.md
+```

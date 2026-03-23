@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link,useNavigate } from "react-router-dom";
 import { motion } from 'framer-motion';
 
 // Estilos y componentes
@@ -18,7 +18,34 @@ const iconTemplate = "bg-[url(assets/backglogin_2.png)]";
 export const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Obtener los datos del formulario y la acción del botón para inicio sesion administrador
+    const datos = new FormData(e.target);
+    const accion = e.nativeEvent.submitter.id;
+
+    const data = Object.fromEntries(new FormData(e.target));
+    console.log(data);
+
+    if (accion === "iniciarsesionadmin") {
+      handleAdminLogin(data);
+    }
+
+    
   };
+
+  const navigate = useNavigate();
+
+  const handleAdminLogin = (data) => {
+    const { txtUserL, txtPasswordL } = data;
+
+    // Simulación autentificacion (luego va backend)
+    if (txtUserL === "admin" && txtPasswordL === "Admin123") {
+      navigate("/AdminAuth"); // segunda autenticación
+    } else {
+      alert("Credenciales incorrectas");
+    }
+  };
+
 
   return (
     <div className={`${Background.BACKGROUND}`}>
@@ -83,7 +110,7 @@ export const Login = () => {
 
                   {/* Acceso administrador */}
                   <div className="w-full flex justify-center">
-                    <Button1 nombre='Acceso de Administrador' id='iniciarsesionadmin' type='link' link='/DashboardAdmin' color='bg-[#353C43]' />
+                    <Button1 nombre='Acceso de Administrador' id='iniciarsesionadmin' type='submit' color='bg-[#353C43]' />
                   </div>
 
                 </section>

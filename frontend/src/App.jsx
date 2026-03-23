@@ -5,6 +5,7 @@ import { RegisterMedic } from "./pages/RegisterMedic"
 import { DashboardPatient } from "./pages/DashboardPatient"
 import { DashboardMedic } from "./pages/DashboardMedic"
 import { DashboardAdmin } from "./pages/DashboardAdmin"
+import { AdminAuth } from "./pages/AdminAuth"
 
 function App() {
   
@@ -16,6 +17,7 @@ function App() {
       <Route path="/DashboardPatient" element={<DashboardPatient/>}/>
       <Route path="/DashboardMedic" element={<DashboardMedic/>}/>
       <Route path="/DashboardAdmin" element={<DashboardAdmin/>}/>
+      <Route path="/AdminAuth" element={<AdminAuth/>} />
     </Routes>
   )
 }
