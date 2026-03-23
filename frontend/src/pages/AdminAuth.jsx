@@ -4,37 +4,63 @@ import { MdArrowBack, MdUploadFile } from "react-icons/md";
 
 export const AdminAuth = () => {
   const [archivo, setArchivo] = useState(null);
+  const [error, setError] = useState(null); // Estado para manejar los errores
   const navigate = useNavigate();
 
   const handleFile = (e) => {
     const file = e.target.files[0];
+    setError(null); // Limpiamos errores al seleccionar otro archivo
 
     if (file && file.type !== "text/plain") {
-      alert("Solo se permiten archivos .txt");
+      setError("Solo se permiten archivos .txt");
+      setArchivo(null);
       return;
     }
 
     setArchivo(file);
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(null);
 
     if (!archivo) {
-      alert("Debe subir el archivo");
+      setError("Debe subir el archivo para continuar");
       return;
     }
 
-    const texto = await archivo.text();
+    const formData = new FormData();
+    formData.append("file", archivo);
 
-    // Simulación validación (luego va backend)
-    if (texto.trim() === "CLAVE_ENCRIPTADA_123") {
-      navigate("/DashboardAdmin");
-    } else {
-      alert("Archivo inválido");
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/admin/auth2?usuario=admin", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        navigate("/DashboardAdmin");
+      } else {
+        // Mostramos el error ("La contraseña del archivo es incorrecta")
+        setError(data.detail);
+        
+        // --- LA SOLUCIÓN AQUÍ ---
+        // Vaciamos el estado para obligar al usuario a seleccionar el archivo corregido
+        setArchivo(null);
+        document.getElementById("fileInput").value = ""; 
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error de conexión con el servidor. Por favor, vuelva a adjuntar el archivo.");
+      // Limpiamos también si hay un error de red
+      setArchivo(null);
+      if (document.getElementById("fileInput")) {
+        document.getElementById("fileInput").value = "";
+      }
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
 
@@ -44,7 +70,7 @@ export const AdminAuth = () => {
         className="absolute top-6 left-6 flex items-center gap-2 text-gray-700 hover:text-black"
       >
         <MdArrowBack className="text-2xl" />
-        <span>Volver</span>
+        <span>Volver al Login</span>
       </button>
 
       {/* Card */}
@@ -66,6 +92,7 @@ export const AdminAuth = () => {
             accept=".txt"
             id="fileInput"
             onChange={handleFile}
+            onClick={(e) => { e.target.value = null; }} /* <--- ESTO ES VITAL */
             className="hidden"
           />
 
@@ -83,6 +110,11 @@ export const AdminAuth = () => {
             <p className="text-sm text-gray-600 mt-2">
               Archivo seleccionado: <span className="font-medium">{archivo.name}</span>
             </p>
+          )}
+
+          {/* Mensaje de error dinámico */}
+          {error && (
+            <p className="text-red-500 text-sm font-semibold mt-2">{error}</p>
           )}
 
           {/* Botón validar */}
