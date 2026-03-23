@@ -1,10 +1,6 @@
-<<<<<<< HEAD
-import { Link,useNavigate } from "react-router-dom";
-=======
 import { useState } from 'react';
-import { Link, useNavigate } from "react-router-dom"; // Agregamos useNavigate
->>>>>>> feature/Conexión-ENPOINTS-backend/frontend_201907078
-import { motion } from 'framer-motion';
+import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 // Estilos y componentes
 import { Size, SizeBox, CButton, Background } from "../styles/Styles";
@@ -26,29 +22,14 @@ export const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-<<<<<<< HEAD
-
-    // Obtener los datos del formulario y la acción del botón para inicio sesion administrador
-    const datos = new FormData(e.target);
-    const accion = e.nativeEvent.submitter.id;
-
-    const data = Object.fromEntries(new FormData(e.target));
-    console.log(data);
-
-    if (accion === "iniciarsesionadmin") {
-      handleAdminLogin(data);
-    }
-
-    
-=======
     setError(null); // Limpiamos errores previos
 
-    // 1. Extraemos los valores usando los IDs que le pasaste a tus componentes Input
+    // Extraemos los valores de los inputs
     const correo = e.target.txtUserL.value;
     const contrasena = e.target.txtPasswordL.value;
 
     try {
-      // 2. Hacemos la petición a tu API de FastAPI
+      // Hacemos la petición al backend que tú construiste
       const respuesta = await fetch('http://127.0.0.1:8000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -63,42 +44,27 @@ export const Login = () => {
       const datos = await respuesta.json();
 
       if (respuesta.ok) {
-        // 3. ¡Éxito! Guardamos el token de seguridad
+        // Guardamos el token en localStorage para futuras peticiones
         localStorage.setItem('token', datos.token);
         localStorage.setItem('rol', datos.rol);
 
-        // 4. Redirección inteligente basada en el backend
+        // ¡AQUÍ ESTÁ LA MAGIA DEL MERGE!
+        // Usamos la redirección del 2FA de tu compañero, pero respaldada por tu backend
         if (datos.rol === 'administrador') {
-          navigate('/DashboardAdmin');
+          navigate('/AdminAuth'); // Redirige a la segunda autenticación
         } else if (datos.rol === 'medico') {
           navigate('/DashboardMedic');
         } else if (datos.rol === 'paciente') {
           navigate('/DashboardPatient');
         }
       } else {
-        // Mostramos el error del backend (ej: "Cuenta pendiente de aprobación")
-        setError(datos.detail);
+        setError(datos.detail); // Muestra "Credenciales incorrectas" o "Cuenta pendiente"
       }
     } catch (error) {
       console.error(error);
-      setError('Error de conexión con el servidor. Verifica que FastAPI esté corriendo.');
-    }
->>>>>>> feature/Conexión-ENPOINTS-backend/frontend_201907078
-  };
-
-  const navigate = useNavigate();
-
-  const handleAdminLogin = (data) => {
-    const { txtUserL, txtPasswordL } = data;
-
-    // Simulación autentificacion (luego va backend)
-    if (txtUserL === "admin" && txtPasswordL === "Admin123") {
-      navigate("/AdminAuth"); // segunda autenticación
-    } else {
-      alert("Credenciales incorrectas");
+      setError('Error de conexión con el servidor. Verifica que el backend esté corriendo.');
     }
   };
-
 
   return (
     <div className={`${Background.BACKGROUND}`}>
@@ -153,8 +119,6 @@ export const Login = () => {
                   
                   {/* Botón único de iniciar sesión */}
                   <div className="flex w-full justify-center">
-                     {/* Nota: Asegúrate de que tu componente Button1 soporte type='submit'. 
-                         Si no, puedes usar un <button> normal de HTML por ahora */}
                     <button 
                       type="submit" 
                       className={`w-full py-2 rounded text-white font-bold bg-gradient-to-r from-blue-500 to-cyan-500 hover:opacity-90 transition-opacity`}
@@ -176,23 +140,6 @@ export const Login = () => {
                     <Button1 nombre='Registrarse como Médico' id='crearcuentamed' type='link' link='/RegisterMedic' color={CButton.MATE} />
                   </div>
 
-<<<<<<< HEAD
-                  {/* botones iniciar sesión */}
-                  <div className="flex w-full justify-between gap-4">
-                    <Button1 nombre='Iniciar sesión como Paciente' id='iniciarsesionpac' type='link' link='/DashboardPatient' color={CButton.GRADIENT} />
-                    <Button1 nombre='Iniciar sesión como Médico' id='iniciarsesionmed' type='link' link='/DashboardMedic' color={CButton.GRADIENT} />
-                  </div>
-
-                  {/* Separador */}
-                  <div className="w-full h-px bg-gray-300 my-2"></div>
-
-                  {/* Acceso administrador */}
-                  <div className="w-full flex justify-center">
-                    <Button1 nombre='Acceso de Administrador' id='iniciarsesionadmin' type='submit' color='bg-[#353C43]' />
-                  </div>
-
-=======
->>>>>>> feature/Conexión-ENPOINTS-backend/frontend_201907078
                 </section>
               </form>
             </section>
