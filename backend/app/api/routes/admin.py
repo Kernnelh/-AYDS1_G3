@@ -4,8 +4,8 @@ from passlib.context import CryptContext
 from app.db.database import get_db
 from sqlalchemy import text
 from app.db.database import get_db
-from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPaciente
-from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedico
+from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
+from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
 from app.schemas.admin import ActualizarEstado
 from app.core.security import verificar_token
 
@@ -58,8 +58,8 @@ def obtener_usuarios_pendientes(
     if usuario_actual.get("rol") != "administrador":
         raise HTTPException(status_code=403, detail="No tienes permisos de administrador")
 
-    pacientes_pendientes = db.query(Paciente).filter(Paciente.estado == EstadoPaciente.Pendiente).all()
-    medicos_pendientes = db.query(Medico).filter(Medico.estado == EstadoMedico.Pendiente).all()
+    pacientes_pendientes = db.query(Paciente).filter(Paciente.estado == EstadoPacienteEnum.Pendiente).all()
+    medicos_pendientes = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Pendiente).all()
 
     return {
         "pacientes": pacientes_pendientes,
@@ -89,3 +89,66 @@ def actualizar_estado_usuario(
     db.commit()
     
     return {"mensaje": f"Estado del {rol} actualizado exitosamente a {datos.estado.value}"}
+
+@router.get("/usuarios/{tipo_usuario}/aprobados", tags=["Administrador"])
+def listar_usuarios_aprobados(
+    tipo_usuario: str, 
+    db: Session = Depends(get_db), 
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Lista médicos o pacientes que están actualmente Aprobados (activos)"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+    
+    if tipo_usuario.lower() == "medico":
+        # Usamos el Enum específico del médico
+        usuarios = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    elif tipo_usuario.lower() == "paciente":
+        # Usamos el Enum específico del paciente
+        usuarios = db.query(Paciente).filter(Paciente.estado == EstadoPacienteEnum.Aprobado).all()
+    else:
+        raise HTTPException(status_code=400, detail="Tipo de usuario inválido. Use 'medico' o 'paciente'.")
+    
+    return usuarios
+
+@router.patch("/usuarios/{tipo_usuario}/{id_usuario}/baja", tags=["Administrador"])
+def dar_de_baja_usuario(
+    tipo_usuario: str, 
+    id_usuario: int, 
+    db: Session = Depends(get_db), 
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Cambia el estado de un usuario Aprobado a Rechazado (Dar de baja)"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+    
+    # 1. Buscamos y validamos el estado según el tipo
+    if tipo_usuario.lower() == "medico":
+        usuario_db = db.query(Medico).filter(Medico.id_medico == id_usuario).first()
+        if not usuario_db:
+            raise HTTPException(status_code=404, detail="Médico no encontrado.")
+        if usuario_db.estado == EstadoMedicoEnum.Rechazado:
+            raise HTTPException(status_code=400, detail="Este médico ya está dado de baja.")
+        # Aplicamos la baja con su propio Enum
+        usuario_db.estado = EstadoMedicoEnum.Rechazado
+
+    elif tipo_usuario.lower() == "paciente":
+        usuario_db = db.query(Paciente).filter(Paciente.id_paciente == id_usuario).first()
+        if not usuario_db:
+            raise HTTPException(status_code=404, detail="Paciente no encontrado.")
+        if usuario_db.estado == EstadoPacienteEnum.Rechazado:
+            raise HTTPException(status_code=400, detail="Este paciente ya está dado de baja.")
+        # Aplicamos la baja con su propio Enum
+        usuario_db.estado = EstadoPacienteEnum.Rechazado
+        
+    else:
+        raise HTTPException(status_code=400, detail="Tipo de usuario inválido. Use 'medico' o 'paciente'.")
+
+    # 2. Guardamos los cambios
+    db.commit()
+    db.refresh(usuario_db)
+    
+    return {
+        "mensaje": f"{tipo_usuario.capitalize()} dado de baja exitosamente", 
+        "nuevo_estado": usuario_db.estado
+    }
