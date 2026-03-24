@@ -9,7 +9,7 @@ class GeneroEnum(str, enum.Enum):
 
 class EstadoUsuarioEnum(str, enum.Enum):
     Pendiente = "Pendiente"
-    Activo = "Activo"
+    Aprobado = "Aprobado"
     Rechazado = "Rechazado"
 
 class Medico(Base):
