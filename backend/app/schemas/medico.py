@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
-from datetime import date
+from datetime import date, time
 from app.models.medico import GeneroEnum
+from typing import List
 
 class MedicoCreate(BaseModel):
     nombre: str = Field(..., max_length=100)
@@ -16,3 +17,8 @@ class MedicoCreate(BaseModel):
     direccion_clinica: str = Field(..., max_length=255)
     correo: EmailStr
     contrasena: str = Field(..., min_length=8)
+
+class HorarioCrear(BaseModel):
+    dias: List[str]  # Ejemplo: ["Lunes", "Martes", "Miércoles"]
+    hora_inicio: time # Ejemplo: "08:00:00"
+    hora_fin: time    # Ejemplo: "17:00:00"

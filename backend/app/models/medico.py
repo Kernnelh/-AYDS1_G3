@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, func
+from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, func, Time, ForeignKey
 from app.db.database import Base
 
 
@@ -32,3 +32,19 @@ class Medico(Base):
     contrasena = Column(String(255), nullable=False)
     estado = Column(Enum(EstadoUsuarioEnum), default=EstadoUsuarioEnum.Pendiente)
     fecha_registro = Column(DateTime, default=func.now())
+
+
+class HorarioMedico(Base):
+    __tablename__ = "horario_medico"
+    
+    id_horario = Column(Integer, primary_key=True, index=True)
+    id_medico = Column(Integer, ForeignKey("Medico.id_medico"), nullable=False)
+    hora_inicio = Column(Time, nullable=False)
+    hora_fin = Column(Time, nullable=False)
+
+class DiaAtencion(Base):
+    __tablename__ = "dia_atencion"
+    
+    id_dia_atencion = Column(Integer, primary_key=True, index=True) 
+    id_medico = Column(Integer, ForeignKey("Medico.id_medico"), nullable=False)
+    dia_semana = Column(String(20), nullable=False)
