@@ -1,0 +1,51 @@
+# ==========================================
+# Entornos Virtuales (¡Lo más importante!)
+# ==========================================
+venv/
+env/
+.venv/
+
+# ==========================================
+# Variables de Entorno y Credenciales
+# ==========================================
+.env
+.env.*
+*.pem
+
+# ==========================================
+# Archivos compilados y temporales de Python
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ==========================================
+# Logs del sistema y de FastAPI
+# ==========================================
+*.log
+
+# ==========================================
+# Archivos basura del Sistema Operativo
+# ==========================================
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# Configuraciones locales de IDEs (VS Code, PyCharm, etc.)
+# ==========================================
+.vscode/
+.idea/
+*.swp
+
+# ==========================================
+# Base de datos local (por si acaso hacen pruebas)
+# ==========================================
+*.db
+*.sqlite3
+
+# ==========================================
+# Ignorar fotos subidas localmente
+# ==========================================
+app/static/fotos/*
+!app/static/fotos/.gitkeep

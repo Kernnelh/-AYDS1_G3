@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+html, body {
+    background-color: #F2F2F2;
+    color: #353C43;
+    font-family: 'sansation-light', 'courier';
+    font-size: 12px;
+    margin: 0;
+}
+
+html, body {
+    background-color: #F2F2F2;
+    color: #353C43;
+    font-family: 'sansation-light', 'Poppins', sans-serif;
+    font-size: 12px;
+    margin: 0;
+}
