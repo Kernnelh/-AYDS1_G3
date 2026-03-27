@@ -123,3 +123,75 @@ def obtener_medicos_disponibles(
         })
         
     return resultado
+
+
+@router.get("/citas/activas", tags=["Paciente"])
+def obtener_citas_activas_paciente(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve la lista de citas pendientes (futuras) para el paciente que ha iniciado sesión"""
+    if usuario_actual.get("rol") != "paciente":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo pacientes.")
+    
+    id_paciente_actual = usuario_actual.get("id")
+
+    # Buscamos las citas del paciente que aún no han sido atendidas ni canceladas
+    citas = db.query(Cita).filter(
+        Cita.id_paciente == id_paciente_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+
+    # Formateamos para incluir el nombre del doctor
+    resultado = []
+    for cita in citas:
+        medico = db.query(Medico).filter(Medico.id_medico == cita.id_medico).first()
+        
+        resultado.append({
+            "id_cita": cita.id_cita,
+            "fecha": cita.fecha,
+            "hora": cita.hora,
+            "motivo": cita.motivo,
+            "estado": cita.estado,
+            "medico": f"Dr. {medico.nombre} {medico.apellido}" if medico else "Médico Desconocido"
+        })
+        
+    return resultado
+
+@router.put("/citas/{id_cita}/cancelar", tags=["Paciente"])
+def cancelar_cita_paciente(
+    id_cita: int,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Permite al paciente cancelar su propia cita"""
+    if usuario_actual.get("rol") != "paciente":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo pacientes.")
+    
+    id_paciente_actual = usuario_actual.get("id")
+
+    # Buscamos la cita y verificamos que le pertenezca a ESTE paciente
+    cita_db = db.query(Cita).filter(
+        Cita.id_cita == id_cita,
+        Cita.id_paciente == id_paciente_actual
+    ).first()
+
+    if not cita_db:
+        raise HTTPException(status_code=404, detail="Cita no encontrada o no tienes permisos sobre ella.")
+    
+    if cita_db.estado != EstadoCitaEnum.Pendiente:
+        raise HTTPException(status_code=400, detail="Solo puedes cancelar citas que estén programadas (Pendientes).")
+
+    # Ejecutamos la cancelación
+    cita_db.estado = EstadoCitaEnum.Cancelada_Paciente
+    cita_db.fecha_cancelacion = datetime.now()
+    
+    db.commit()
+    db.refresh(cita_db)
+
+    return {
+        "mensaje": "Cita cancelada exitosamente", 
+        "id_cita": cita_db.id_cita,
+        "nuevo_estado": cita_db.estado,
+        "fecha_cancelacion": cita_db.fecha_cancelacion
+    }
