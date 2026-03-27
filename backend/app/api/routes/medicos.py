@@ -8,9 +8,15 @@ from app.schemas.medico import MedicoCreate
 from app.schemas.medico import HorarioCrear
 from app.models.medico import HorarioMedico, DiaAtencion
 from app.models.cita import Cita, EstadoCitaEnum
+from app.models.paciente import Paciente
+from pydantic import BaseModel
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+#Esquema para manejo de tratamiento
+class TratamientoUpdate(BaseModel):
+    tratamiento: str
 
 @router.post("/registro", status_code=status.HTTP_201_CREATED)
 def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
@@ -128,3 +134,76 @@ def establecer_horario(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al guardar en BD: {str(e)}")
+    
+
+
+@router.get("/citas/pendientes", tags=["Médico"])
+def obtener_citas_pendientes(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve la lista de citas pendientes para el médico que ha iniciado sesión"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos las citas del médico en estado Pendiente
+    citas = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+
+    # Formateamos la respuesta para incluir el nombre del paciente
+    resultado = []
+    for cita in citas:
+        paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+        
+        resultado.append({
+            "id_cita": cita.id_cita,
+            "fecha": cita.fecha,
+            "hora": cita.hora,
+            "motivo": cita.motivo,
+            "estado": cita.estado,
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+        })
+        
+    return resultado
+
+@router.put("/citas/{id_cita}/atender", tags=["Médico"])
+def atender_cita(
+    id_cita: int,
+    datos: TratamientoUpdate,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Permite al médico ingresar el tratamiento y marcar la cita como Atendida"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos la cita y verificamos que le pertenezca a ESTE médico
+    cita_db = db.query(Cita).filter(
+        Cita.id_cita == id_cita,
+        Cita.id_medico == id_medico_actual
+    ).first()
+
+    if not cita_db:
+        raise HTTPException(status_code=404, detail="Cita no encontrada o no tienes permisos sobre ella.")
+    
+    if cita_db.estado != EstadoCitaEnum.Pendiente:
+        raise HTTPException(status_code=400, detail="Solo puedes atender citas que estén en estado Pendiente.")
+
+    # Guardamos el tratamiento y cambiamos el estado
+    cita_db.tratamiento = datos.tratamiento
+    cita_db.estado = EstadoCitaEnum.Atendida
+    
+    db.commit()
+    db.refresh(cita_db)
+
+    return {
+        "mensaje": "Cita atendida exitosamente", 
+        "id_cita": cita_db.id_cita,
+        "nuevo_estado": cita_db.estado
+    }
