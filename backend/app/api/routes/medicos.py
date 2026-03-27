@@ -7,6 +7,7 @@ from app.models.medico import Medico, EstadoUsuarioEnum
 from app.schemas.medico import MedicoCreate
 from app.schemas.medico import HorarioCrear
 from app.models.medico import HorarioMedico, DiaAtencion
+from app.models.cita import Cita, EstadoCitaEnum
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -72,24 +73,52 @@ def establecer_horario(
     if horario_datos.hora_inicio >= horario_datos.hora_fin:
         raise HTTPException(status_code=400, detail="La hora de inicio debe ser antes de la hora de fin")
 
+    # --- NUEVA LÓGICA: VALIDACIÓN DE BLOQUEO DE HORARIO ---
+    citas_pendientes = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+
+    dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+    for cita in citas_pendientes:
+        dia_cita = dias_semana[cita.fecha.weekday()]
+        
+        # 1. Validar que no quite un día donde ya tiene citas
+        if dia_cita not in horario_datos.dias:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No puedes eliminar el día {dia_cita} porque tienes citas pendientes programadas para ese día."
+            )
+        
+        # 2. Validar que no acorte el horario dejando citas por fuera
+        if not (horario_datos.hora_inicio <= cita.hora <= horario_datos.hora_fin):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No puedes cambiar tu horario. Tienes citas programadas a las {cita.hora} que quedarían fuera del nuevo rango."
+            )
+    # ------------------------------------------------------
+
     try:
         # Limpiamos los horarios anteriores si está actualizando
         db.query(HorarioMedico).filter(HorarioMedico.id_medico == id_medico_actual).delete()
         db.query(DiaAtencion).filter(DiaAtencion.id_medico == id_medico_actual).delete()
 
-        # 1. Guardar el nuevo rango de horas
+        # Guardar el nuevo rango de horas
         nuevo_horario = HorarioMedico(
             id_medico=id_medico_actual,
             hora_inicio=horario_datos.hora_inicio,
             hora_fin=horario_datos.hora_fin
         )
         db.add(nuevo_horario)
+        db.commit() 
+        db.refresh(nuevo_horario) 
 
-        # 2. Guardar cada día seleccionado usando la columna dia_semana
+        # Guardar cada día seleccionado
         for dia in horario_datos.dias:
             nuevo_dia = DiaAtencion(
-                id_medico=id_medico_actual, 
-                dia_semana=dia 
+                id_horario=nuevo_horario.id_horario, 
+                dia=dia 
             )
             db.add(nuevo_dia)
         
