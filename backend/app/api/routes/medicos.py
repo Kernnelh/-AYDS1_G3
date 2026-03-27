@@ -272,3 +272,41 @@ def cancelar_cita_medico(
         "id_cita": cita_db.id_cita,
         "nuevo_estado": cita_db.estado
     }
+
+
+
+@router.get("/citas/historial", tags=["Médico"])
+def obtener_historial_citas_medico(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve las citas pasadas (Atendidas o Canceladas) para el historial del médico"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos las citas que YA NO son pendientes para este doctor
+    citas = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado.in_([
+            EstadoCitaEnum.Atendida, 
+            EstadoCitaEnum.Cancelada_Paciente, 
+            EstadoCitaEnum.Cancelada_Medico
+        ])
+    ).all()
+
+    # Formateamos incluyendo el nombre del paciente según el PDF
+    resultado = []
+    for cita in citas:
+        paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+        
+        resultado.append({
+            "id_cita": cita.id_cita,
+            "fecha": cita.fecha,
+            "hora": cita.hora,
+            "estado": cita.estado,
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+        })
+        
+    return resultado
