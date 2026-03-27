@@ -88,17 +88,31 @@ def obtener_medicos_disponibles(
     db: Session = Depends(get_db),
     usuario_actual: dict = Depends(verificar_token)
 ):
-    """Devuelve la lista de médicos aprobados con sus horarios de atención configurados"""
+    """Devuelve médicos aprobados, ocultando aquellos con los que el paciente ya tiene una cita activa"""
     
     if usuario_actual.get("rol") != "paciente":
         raise HTTPException(status_code=403, detail="Solo los pacientes pueden consultar la disponibilidad")
 
-    # 1. Buscamos solo a los médicos que estén activos en la clínica
-    medicos_aprobados = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    id_paciente_actual = usuario_actual.get("id")
+
+    # 1. Buscamos los IDs de los médicos con los que el paciente YA tiene una cita Pendiente
+    citas_activas = db.query(Cita.id_medico).filter(
+        Cita.id_paciente == id_paciente_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+    
+    # Extraemos solo los IDs en una lista de Python (ej: [1, 4, 5])
+    ids_medicos_ocupados = [cita[0] for cita in citas_activas]
+
+    # 2. Buscamos a los médicos Aprobados, EXCLUYENDO los IDs que encontramos arriba
+    medicos_aprobados = db.query(Medico).filter(
+        Medico.estado == EstadoMedicoEnum.Aprobado,
+        Medico.id_medico.notin_(ids_medicos_ocupados) if ids_medicos_ocupados else True
+    ).all()
     
     resultado = []
     
-    # 2. Por cada médico, extraemos su horario y sus días
+    # 3. Formateamos la respuesta igual que antes
     for medico in medicos_aprobados:
         horario_db = db.query(HorarioMedico).filter(HorarioMedico.id_medico == medico.id_medico).first()
         dias_db = db.query(DiaAtencion).filter(DiaAtencion.id_medico == medico.id_medico).all()
@@ -113,7 +127,6 @@ def obtener_medicos_disponibles(
                 "dias": dias_lista
             }
         
-        # 3. Armamos el paquete de datos limpio para el frontend
         resultado.append({
             "id_medico": medico.id_medico,
             "nombre": medico.nombre,
