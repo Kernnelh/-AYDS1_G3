@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -17,6 +19,9 @@ pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 #Esquema para manejo de tratamiento
 class TratamientoUpdate(BaseModel):
     tratamiento: str
+
+class CancelacionMedico(BaseModel):
+    motivo_cancelacion: str
 
 @router.post("/registro", status_code=status.HTTP_201_CREATED)
 def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
@@ -204,6 +209,66 @@ def atender_cita(
 
     return {
         "mensaje": "Cita atendida exitosamente", 
+        "id_cita": cita_db.id_cita,
+        "nuevo_estado": cita_db.estado
+    }
+
+
+@router.put("/citas/{id_cita}/cancelar", tags=["Médico"])
+def cancelar_cita_medico(
+    id_cita: int,
+    datos: CancelacionMedico,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Permite al médico cancelar una cita y 'envía' un correo de notificación al paciente"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # 1. Buscamos la cita
+    cita_db = db.query(Cita).filter(
+        Cita.id_cita == id_cita,
+        Cita.id_medico == id_medico_actual
+    ).first()
+
+    if not cita_db:
+        raise HTTPException(status_code=404, detail="Cita no encontrada o no te pertenece.")
+    
+    if cita_db.estado != EstadoCitaEnum.Pendiente:
+        raise HTTPException(status_code=400, detail="Solo puedes cancelar citas que estén Pendientes.")
+
+    # 2. Obtenemos los datos del paciente y del médico para armar el correo
+    paciente_db = db.query(Paciente).filter(Paciente.id_paciente == cita_db.id_paciente).first()
+    medico_db = db.query(Medico).filter(Medico.id_medico == id_medico_actual).first()
+
+    # 3. Cambiamos el estado en la Base de Datos
+    cita_db.estado = EstadoCitaEnum.Cancelada_Medico
+    cita_db.fecha_cancelacion = datetime.now()
+    db.commit()
+    db.refresh(cita_db)
+
+    # 4. --- LÓGICA DE CORREO SIMULADO (COMPROBANTE TÉCNICO) ---
+    # Esto se imprimirá en la terminal de Uvicorn (tu servidor)
+    print("\n" + "="*60)
+    print(f"📧 SIMULACIÓN SMTP - ENVIANDO CORREO A: {paciente_db.correo}")
+    print("ASUNTO: Notificación importante - Cancelación de Cita Médica")
+    print("-" * 60)
+    print(f"Estimado/a {paciente_db.nombre} {paciente_db.apellido},")
+    print("Le informamos que su cita ha sido cancelada debido a contratiempos por parte de la clínica.\n")
+    print("📋 DETALLES DE LA CANCELACIÓN:")
+    print(f"  • Fecha de cita cancelada: {cita_db.fecha}")
+    print(f"  • Hora de cita cancelada: {cita_db.hora}")
+    print(f"  • Médico: Dr. {medico_db.nombre} {medico_db.apellido}")
+    print(f"  • Motivo de la cancelación: {datos.motivo_cancelacion}\n")
+    print("Mensaje de disculpa:")
+    print("Lamentamos sinceramente los inconvenientes que esto le pueda causar. Por favor, ingrese a su perfil para reprogramar su cita en un nuevo horario disponible.")
+    print("="*60 + "\n")
+    # ----------------------------------------------------------
+
+    return {
+        "mensaje": "Cita cancelada exitosamente y notificación enviada al paciente", 
         "id_cita": cita_db.id_cita,
         "nuevo_estado": cita_db.estado
     }
