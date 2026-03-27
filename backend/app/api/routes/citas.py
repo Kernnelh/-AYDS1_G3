@@ -9,6 +9,8 @@ from app.models.cita import Cita, EstadoCitaEnum
 from app.models.medico import HorarioMedico, DiaAtencion
 from app.schemas.cita import CitaCrear
 
+from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
+
 router = APIRouter()
 
 @router.post("/citas", tags=["Paciente"])
@@ -78,3 +80,46 @@ def programar_cita(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error interno al programar la cita: {str(e)}")
+    
+
+
+@router.get("/medicos-disponibles", tags=["Paciente"])
+def obtener_medicos_disponibles(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve la lista de médicos aprobados con sus horarios de atención configurados"""
+    
+    if usuario_actual.get("rol") != "paciente":
+        raise HTTPException(status_code=403, detail="Solo los pacientes pueden consultar la disponibilidad")
+
+    # 1. Buscamos solo a los médicos que estén activos en la clínica
+    medicos_aprobados = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    
+    resultado = []
+    
+    # 2. Por cada médico, extraemos su horario y sus días
+    for medico in medicos_aprobados:
+        horario_db = db.query(HorarioMedico).filter(HorarioMedico.id_medico == medico.id_medico).first()
+        dias_db = db.query(DiaAtencion).filter(DiaAtencion.id_medico == medico.id_medico).all()
+        
+        dias_lista = [dia.dia_semana for dia in dias_db]
+        
+        horario_formateado = None
+        if horario_db:
+            horario_formateado = {
+                "hora_inicio": horario_db.hora_inicio,
+                "hora_fin": horario_db.hora_fin,
+                "dias": dias_lista
+            }
+        
+        # 3. Armamos el paquete de datos limpio para el frontend
+        resultado.append({
+            "id_medico": medico.id_medico,
+            "nombre": medico.nombre,
+            "apellido": medico.apellido,
+            "especialidad": medico.especialidad,
+            "horario": horario_formateado
+        })
+        
+    return resultado
