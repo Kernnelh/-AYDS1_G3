@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -7,9 +9,19 @@ from app.models.medico import Medico, EstadoUsuarioEnum
 from app.schemas.medico import MedicoCreate
 from app.schemas.medico import HorarioCrear
 from app.models.medico import HorarioMedico, DiaAtencion
+from app.models.cita import Cita, EstadoCitaEnum
+from app.models.paciente import Paciente
+from pydantic import BaseModel
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+#Esquema para manejo de tratamiento
+class TratamientoUpdate(BaseModel):
+    tratamiento: str
+
+class CancelacionMedico(BaseModel):
+    motivo_cancelacion: str
 
 @router.post("/registro", status_code=status.HTTP_201_CREATED)
 def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
@@ -72,24 +84,52 @@ def establecer_horario(
     if horario_datos.hora_inicio >= horario_datos.hora_fin:
         raise HTTPException(status_code=400, detail="La hora de inicio debe ser antes de la hora de fin")
 
+    # --- NUEVA LÓGICA: VALIDACIÓN DE BLOQUEO DE HORARIO ---
+    citas_pendientes = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+
+    dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+    for cita in citas_pendientes:
+        dia_cita = dias_semana[cita.fecha.weekday()]
+        
+        # 1. Validar que no quite un día donde ya tiene citas
+        if dia_cita not in horario_datos.dias:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No puedes eliminar el día {dia_cita} porque tienes citas pendientes programadas para ese día."
+            )
+        
+        # 2. Validar que no acorte el horario dejando citas por fuera
+        if not (horario_datos.hora_inicio <= cita.hora <= horario_datos.hora_fin):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"No puedes cambiar tu horario. Tienes citas programadas a las {cita.hora} que quedarían fuera del nuevo rango."
+            )
+    # ------------------------------------------------------
+
     try:
         # Limpiamos los horarios anteriores si está actualizando
         db.query(HorarioMedico).filter(HorarioMedico.id_medico == id_medico_actual).delete()
         db.query(DiaAtencion).filter(DiaAtencion.id_medico == id_medico_actual).delete()
 
-        # 1. Guardar el nuevo rango de horas
+        # Guardar el nuevo rango de horas
         nuevo_horario = HorarioMedico(
             id_medico=id_medico_actual,
             hora_inicio=horario_datos.hora_inicio,
             hora_fin=horario_datos.hora_fin
         )
         db.add(nuevo_horario)
+        db.commit() 
+        db.refresh(nuevo_horario) 
 
-        # 2. Guardar cada día seleccionado usando la columna dia_semana
+        # Guardar cada día seleccionado
         for dia in horario_datos.dias:
             nuevo_dia = DiaAtencion(
-                id_medico=id_medico_actual, 
-                dia_semana=dia 
+                id_horario=nuevo_horario.id_horario, 
+                dia=dia 
             )
             db.add(nuevo_dia)
         
@@ -99,3 +139,174 @@ def establecer_horario(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al guardar en BD: {str(e)}")
+    
+
+
+@router.get("/citas/pendientes", tags=["Médico"])
+def obtener_citas_pendientes(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve la lista de citas pendientes para el médico que ha iniciado sesión"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos las citas del médico en estado Pendiente
+    citas = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado == EstadoCitaEnum.Pendiente
+    ).all()
+
+    # Formateamos la respuesta para incluir el nombre del paciente
+    resultado = []
+    for cita in citas:
+        paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+        
+        resultado.append({
+            "id_cita": cita.id_cita,
+            "fecha": cita.fecha,
+            "hora": cita.hora,
+            "motivo": cita.motivo,
+            "estado": cita.estado,
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+        })
+        
+    return resultado
+
+@router.put("/citas/{id_cita}/atender", tags=["Médico"])
+def atender_cita(
+    id_cita: int,
+    datos: TratamientoUpdate,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Permite al médico ingresar el tratamiento y marcar la cita como Atendida"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos la cita y verificamos que le pertenezca a ESTE médico
+    cita_db = db.query(Cita).filter(
+        Cita.id_cita == id_cita,
+        Cita.id_medico == id_medico_actual
+    ).first()
+
+    if not cita_db:
+        raise HTTPException(status_code=404, detail="Cita no encontrada o no tienes permisos sobre ella.")
+    
+    if cita_db.estado != EstadoCitaEnum.Pendiente:
+        raise HTTPException(status_code=400, detail="Solo puedes atender citas que estén en estado Pendiente.")
+
+    # Guardamos el tratamiento y cambiamos el estado
+    cita_db.tratamiento = datos.tratamiento
+    cita_db.estado = EstadoCitaEnum.Atendida
+    
+    db.commit()
+    db.refresh(cita_db)
+
+    return {
+        "mensaje": "Cita atendida exitosamente", 
+        "id_cita": cita_db.id_cita,
+        "nuevo_estado": cita_db.estado
+    }
+
+
+@router.put("/citas/{id_cita}/cancelar", tags=["Médico"])
+def cancelar_cita_medico(
+    id_cita: int,
+    datos: CancelacionMedico,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Permite al médico cancelar una cita y 'envía' un correo de notificación al paciente"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # 1. Buscamos la cita
+    cita_db = db.query(Cita).filter(
+        Cita.id_cita == id_cita,
+        Cita.id_medico == id_medico_actual
+    ).first()
+
+    if not cita_db:
+        raise HTTPException(status_code=404, detail="Cita no encontrada o no te pertenece.")
+    
+    if cita_db.estado != EstadoCitaEnum.Pendiente:
+        raise HTTPException(status_code=400, detail="Solo puedes cancelar citas que estén Pendientes.")
+
+    # 2. Obtenemos los datos del paciente y del médico para armar el correo
+    paciente_db = db.query(Paciente).filter(Paciente.id_paciente == cita_db.id_paciente).first()
+    medico_db = db.query(Medico).filter(Medico.id_medico == id_medico_actual).first()
+
+    # 3. Cambiamos el estado en la Base de Datos
+    cita_db.estado = EstadoCitaEnum.Cancelada_Medico
+    cita_db.fecha_cancelacion = datetime.now()
+    db.commit()
+    db.refresh(cita_db)
+
+    # 4. --- LÓGICA DE CORREO SIMULADO (COMPROBANTE TÉCNICO) ---
+    # Esto se imprimirá en la terminal de Uvicorn (tu servidor)
+    print("\n" + "="*60)
+    print(f"📧 SIMULACIÓN SMTP - ENVIANDO CORREO A: {paciente_db.correo}")
+    print("ASUNTO: Notificación importante - Cancelación de Cita Médica")
+    print("-" * 60)
+    print(f"Estimado/a {paciente_db.nombre} {paciente_db.apellido},")
+    print("Le informamos que su cita ha sido cancelada debido a contratiempos por parte de la clínica.\n")
+    print("📋 DETALLES DE LA CANCELACIÓN:")
+    print(f"  • Fecha de cita cancelada: {cita_db.fecha}")
+    print(f"  • Hora de cita cancelada: {cita_db.hora}")
+    print(f"  • Médico: Dr. {medico_db.nombre} {medico_db.apellido}")
+    print(f"  • Motivo de la cancelación: {datos.motivo_cancelacion}\n")
+    print("Mensaje de disculpa:")
+    print("Lamentamos sinceramente los inconvenientes que esto le pueda causar. Por favor, ingrese a su perfil para reprogramar su cita en un nuevo horario disponible.")
+    print("="*60 + "\n")
+    # ----------------------------------------------------------
+
+    return {
+        "mensaje": "Cita cancelada exitosamente y notificación enviada al paciente", 
+        "id_cita": cita_db.id_cita,
+        "nuevo_estado": cita_db.estado
+    }
+
+
+
+@router.get("/citas/historial", tags=["Médico"])
+def obtener_historial_citas_medico(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Devuelve las citas pasadas (Atendidas o Canceladas) para el historial del médico"""
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo médicos.")
+    
+    id_medico_actual = usuario_actual.get("id")
+
+    # Buscamos las citas que YA NO son pendientes para este doctor
+    citas = db.query(Cita).filter(
+        Cita.id_medico == id_medico_actual,
+        Cita.estado.in_([
+            EstadoCitaEnum.Atendida, 
+            EstadoCitaEnum.Cancelada_Paciente, 
+            EstadoCitaEnum.Cancelada_Medico
+        ])
+    ).all()
+
+    # Formateamos incluyendo el nombre del paciente según el PDF
+    resultado = []
+    for cita in citas:
+        paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+        
+        resultado.append({
+            "id_cita": cita.id_cita,
+            "fecha": cita.fecha,
+            "hora": cita.hora,
+            "estado": cita.estado,
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+        })
+        
+    return resultado
