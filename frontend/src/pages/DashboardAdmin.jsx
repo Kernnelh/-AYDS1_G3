@@ -1,114 +1,164 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, Background, CButton } from "../styles/Styles";
 import { Button1 } from "../components/Button1";
 import { ApprovePatientsAdmin } from "../components/ApprovePatientsAdmin";
 import { ApproveMedicsAdmin } from "../components/ApproveMedicsAdmin";
 import { ViewPatientsAdmin } from "../components/ViewPatientsAdmin";
 import { ViewMedicsAdmin } from "../components/ViewMedicsAdmin";
 
-// DATOS QUEMADOS - REEMPLAZAR CON DATOS DEL BACKEND
-import { 
-  pacientesPendientesAprobacionMock,
-  pacientesAprobadosMock,
-  medicosPendientesAprobacionMock,
-  medicosAprobadosMock
-} from "../mock/dataMock";
-
 export const DashboardAdmin = () => {
-  // Estados para navegación
   const [activeSection, setActiveSection] = useState('aceptar_pacientes');
 
-  // Estados para pacientes pendientes
-  const [pacientesPendientes, setPacientesPendientes] = useState(pacientesPendientesAprobacionMock);
-  const [pacientesAprobados, setPacientesAprobados] = useState(pacientesAprobadosMock);
+  const [pacientesPendientes, setPacientesPendientes] = useState([]);
+  const [pacientesAprobados, setPacientesAprobados] = useState([]);
+  const [medicosPendientes, setMedicosPendientes] = useState([]);
+  const [medicosAprobados, setMedicosAprobados] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Estados para médicos pendientes
-  const [medicosPendientes, setMedicosPendientes] = useState(medicosPendientesAprobacionMock);
-  const [medicosAprobados, setMedicosAprobados] = useState(medicosAprobadosMock);
+  // Token guardado en localStorage al hacer login
+  const token = localStorage.getItem('token');
 
-  // ============ MANEJADORES PARA PACIENTES PENDIENTES ============
-
-  const handleApprovePaciente = (pacienteId) => {
-    const paciente = pacientesPendientes.find(p => p.id_paciente === pacienteId);
-    if (!paciente) return;
-
-    console.log('✅ Paciente aprobado:', paciente.nombre, paciente.correo);
-
-    setPacientesPendientes(
-      pacientesPendientes.filter(p => p.id_paciente !== pacienteId)
-    );
-    setPacientesAprobados([
-      ...pacientesAprobados,
-      { ...paciente, estado: 'Aprobado' }
-    ]);
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
   };
 
-  const handleRejectPaciente = (pacienteId) => {
-    const paciente = pacientesPendientes.find(p => p.id_paciente === pacienteId);
-    if (!paciente) return;
+  // ============ CARGA INICIAL DE DATOS ============
+  useEffect(() => {
+    cargarDatos();
+  }, []);
 
-    console.log('❌ Paciente rechazado:', paciente.nombre, paciente.correo);
+  const cargarDatos = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Pendientes (pacientes y médicos en un solo endpoint)
+      const resPendientes = await fetch('http://127.0.0.1:8000/api/admin/pendientes', { headers });
+      const dataPendientes = await resPendientes.json();
 
-    setPacientesPendientes(
-      pacientesPendientes.filter(p => p.id_paciente !== pacienteId)
-    );
+      // Aprobados (dos endpoints separados)
+      const resPacAprobados = await fetch('http://127.0.0.1:8000/api/admin/usuarios/paciente/aprobados', { headers });
+      const dataPacAprobados = await resPacAprobados.json();
+
+      const resMedAprobados = await fetch('http://127.0.0.1:8000/api/admin/usuarios/medico/aprobados', { headers });
+      const dataMedAprobados = await resMedAprobados.json();
+
+      setPacientesPendientes(dataPendientes.pacientes || []);
+      setMedicosPendientes(dataPendientes.medicos || []);
+      setPacientesAprobados(dataPacAprobados || []);
+      setMedicosAprobados(dataMedAprobados || []);
+
+    } catch (err) {
+      console.error(err);
+      setError('Error al cargar datos del servidor');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ============ MANEJADORES PARA MÉDICOS PENDIENTES ============
-
-  const handleApproveMedico = (medicoId) => {
-    const medico = medicosPendientes.find(m => m.id_medico === medicoId);
-    if (!medico) return;
-
-    console.log('✅ Médico aprobado:', medico.nombre, medico.correo);
-
-    setMedicosPendientes(
-      medicosPendientes.filter(m => m.id_medico !== medicoId)
-    );
-    setMedicosAprobados([
-      ...medicosAprobados,
-      { ...medico, estado: 'Aprobado' }
-    ]);
+  // ============ MANEJADORES PACIENTES PENDIENTES ============
+  const handleApprovePaciente = async (pacienteId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/paciente/${pacienteId}/estado`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ estado: 'Aprobado' })
+      });
+      if (res.ok) cargarDatos(); // Recargamos todo del backend
+    } catch (err) {
+      console.error('Error al aprobar paciente:', err);
+    }
   };
 
-  const handleRejectMedico = (medicoId) => {
-    const medico = medicosPendientes.find(m => m.id_medico === medicoId);
-    if (!medico) return;
-
-    console.log('❌ Médico rechazado:', medico.nombre, medico.correo);
-
-    setMedicosPendientes(
-      medicosPendientes.filter(m => m.id_medico !== medicoId)
-    );
+  const handleRejectPaciente = async (pacienteId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/paciente/${pacienteId}/estado`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ estado: 'Rechazado' })
+      });
+      if (res.ok) cargarDatos();
+    } catch (err) {
+      console.error('Error al rechazar paciente:', err);
+    }
   };
 
-  // ============ MANEJADORES PARA PACIENTES APROBADOS ============
-
-  const handleDeactivatePaciente = (pacienteId, razon) => {
-    const paciente = pacientesAprobados.find(p => p.id_paciente === pacienteId);
-    if (!paciente) return;
-
-    console.log(`🚫 Paciente dado de baja: ${paciente.nombre}, Motivo: ${razon}`);
-
-    // Aquí se enviaría a backend
+  // ============ MANEJADORES MÉDICOS PENDIENTES ============
+  const handleApproveMedico = async (medicoId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/medico/${medicoId}/estado`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ estado: 'Aprobado' })
+      });
+      if (res.ok) cargarDatos();
+    } catch (err) {
+      console.error('Error al aprobar médico:', err);
+    }
   };
 
-  // ============ MANEJADORES PARA MÉDICOS APROBADOS ============
-
-  const handleDeactivateMedico = (medicoId, razon) => {
-    const medico = medicosAprobados.find(m => m.id_medico === medicoId);
-    if (!medico) return;
-
-    console.log(`🚫 Médico dado de baja: ${medico.nombre}, Motivo: ${razon}`);
-
-    // Aquí se enviaría a backend
+  const handleRejectMedico = async (medicoId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/medico/${medicoId}/estado`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ estado: 'Rechazado' })
+      });
+      if (res.ok) cargarDatos();
+    } catch (err) {
+      console.error('Error al rechazar médico:', err);
+    }
   };
+
+  // ============ MANEJADORES BAJA ============
+  const handleDeactivatePaciente = async (pacienteId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/paciente/${pacienteId}/baja`, {
+        method: 'PATCH',
+        headers
+      });
+      if (res.ok) cargarDatos();
+    } catch (err) {
+      console.error('Error al dar de baja paciente:', err);
+    }
+  };
+
+  const handleDeactivateMedico = async (medicoId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/admin/usuarios/medico/${medicoId}/baja`, {
+        method: 'PATCH',
+        headers
+      });
+      if (res.ok) cargarDatos();
+    } catch (err) {
+      console.error('Error al dar de baja médico:', err);
+    }
+  };
+
+  const handleSectionChange = async (key) => {
+    setActiveSection(key);
+    await cargarDatos(); // recarga datos frescos al cambiar sección
+  };
+
+  // ============ RENDER ============
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-gray-500 text-lg">Cargando datos...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-red-500 text-lg">{error}</p>
+    </div>
+  );
 
   return (
     <div className={`min-h-screen ${Background.BACKGROUND} p-4 md:p-8`}>
       <div className="max-w-7xl mx-auto">
-        
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -119,80 +169,41 @@ export const DashboardAdmin = () => {
             <h1 className={`${Size.EXTRALARGE} text-gray-800`}>Panel Administrador</h1>
             <p className={`${Size.MEDIUM} text-gray-600`}>Gestiona solicitudes de pacientes y configuración del sistema</p>
           </div>
-          <div className="flex gap-4">
-            <Button1 
-              nombre="Cerrar sesión" 
-              id="logout"
-              type='link' 
-              link='/'
-              color={CButton.MATE}
-            />
-          </div>
+          <Button1 nombre="Cerrar sesión" id="logout" type='link' link='/' color={CButton.MATE} />
         </motion.div>
 
-        {/* Navegación de Secciones */}
+        {/* Navegación */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-wrap gap-3 mb-8 bg-white rounded-lg p-4 shadow-md"
         >
-          {/* Botón: Aceptar Pacientes */}
-          <button
-            onClick={() => setActiveSection('aceptar_pacientes')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'aceptar_pacientes'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Aceptar Pacientes ({pacientesPendientes.length})
-          </button>
-
-          {/* Botón: Aceptar Médicos */}
-          <button
-            onClick={() => setActiveSection('aceptar_medicos')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'aceptar_medicos'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Aceptar Médicos ({medicosPendientes.length})
-          </button>
-
-          {/* Botón: Ver Pacientes */}
-          <button
-            onClick={() => setActiveSection('ver_pacientes')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'ver_pacientes'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Ver Pacientes ({pacientesAprobados.length})
-          </button>
-
-          {/* Botón: Ver Médicos */}
-          <button
-            onClick={() => setActiveSection('ver_medicos')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'ver_medicos'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Ver Médicos ({medicosAprobados.length})
-          </button>
+          {[
+            { key: 'aceptar_pacientes', label: 'Aceptar Pacientes', count: pacientesPendientes.length },
+            { key: 'aceptar_medicos',   label: 'Aceptar Médicos',   count: medicosPendientes.length },
+            { key: 'ver_pacientes',     label: 'Ver Pacientes',     count: pacientesAprobados.length },
+            { key: 'ver_medicos',       label: 'Ver Médicos',       count: medicosAprobados.length },
+          ].map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => handleSectionChange(key)}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                activeSection === key
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {label} ({count})
+            </button>
+          ))}
         </motion.div>
 
-        {/* Secciones de Contenido */}
+        {/* Contenido */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
           className="bg-white rounded-lg p-8 shadow-md"
         >
-          {/* Sección: Aceptar Pacientes */}
           {activeSection === 'aceptar_pacientes' && (
             <ApprovePatientsAdmin
               pacientesPendientes={pacientesPendientes}
@@ -200,8 +211,6 @@ export const DashboardAdmin = () => {
               onReject={handleRejectPaciente}
             />
           )}
-
-          {/* Sección: Aceptar Médicos */}
           {activeSection === 'aceptar_medicos' && (
             <ApproveMedicsAdmin
               medicosPendientes={medicosPendientes}
@@ -209,16 +218,12 @@ export const DashboardAdmin = () => {
               onReject={handleRejectMedico}
             />
           )}
-
-          {/* Sección: Ver Pacientes */}
           {activeSection === 'ver_pacientes' && (
             <ViewPatientsAdmin
               pacientesAprobados={pacientesAprobados}
               onDeactivate={handleDeactivatePaciente}
             />
           )}
-
-          {/* Sección: Ver Médicos */}
           {activeSection === 'ver_medicos' && (
             <ViewMedicsAdmin
               medicosAprobados={medicosAprobados}
@@ -226,6 +231,7 @@ export const DashboardAdmin = () => {
             />
           )}
         </motion.div>
+
       </div>
     </div>
   );

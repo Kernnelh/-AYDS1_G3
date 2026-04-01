@@ -10,6 +10,7 @@ from app.models.medico import HorarioMedico, DiaAtencion
 from app.schemas.cita import CitaCrear
 
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
+from app.models.paciente import Paciente
 
 router = APIRouter()
 
@@ -159,14 +160,19 @@ def obtener_citas_activas_paciente(
     resultado = []
     for cita in citas:
         medico = db.query(Medico).filter(Medico.id_medico == cita.id_medico).first()
+        paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()  # AGREGAR
         
         resultado.append({
             "id_cita": cita.id_cita,
+            "id_medico": cita.id_medico,          # AGREGAR
             "fecha": cita.fecha,
             "hora": cita.hora,
             "motivo": cita.motivo,
             "estado": cita.estado,
-            "medico": f"Dr. {medico.nombre} {medico.apellido}" if medico else "Médico Desconocido"
+            "medico": f"{medico.nombre} {medico.apellido}" if medico else "Médico Desconocido",  # QUITAR Dr.
+            "direccion_clinica": medico.direccion_clinica if medico else "No disponible",  # AGREGAR
+            "correo_paciente": paciente.correo if paciente else "",
+            "especialidad": medico.especialidad if medico else ""  # AGREGAR
         })
         
     return resultado

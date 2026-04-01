@@ -12,6 +12,9 @@ env/
 .env.*
 *.pem
 
+# Permitir archivo de ejemplo
+!.env.example
+
 # ==========================================
 # Archivos compilados y temporales de Python
 # ==========================================

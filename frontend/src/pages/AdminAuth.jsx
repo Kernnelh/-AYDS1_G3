@@ -20,7 +20,7 @@ export const AdminAuth = () => {
     setArchivo(file);
   };
 
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
 
@@ -29,11 +29,16 @@ const handleSubmit = async (e) => {
       return;
     }
 
+    // Obtener usuario del token guardado en localStorage
+    const token = localStorage.getItem('token');
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const usuario = payload.sub; // El sub del admin es su usuario
+
     const formData = new FormData();
     formData.append("file", archivo);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/admin/auth2?usuario=admin", {
+      const response = await fetch(`http://127.0.0.1:8000/api/admin/auth2?usuario=${usuario}`, {
         method: "POST",
         body: formData,
       });
@@ -43,18 +48,13 @@ const handleSubmit = async (e) => {
       if (response.ok) {
         navigate("/DashboardAdmin");
       } else {
-        // Mostramos el error ("La contraseña del archivo es incorrecta")
         setError(data.detail);
-        
-        // --- LA SOLUCIÓN AQUÍ ---
-        // Vaciamos el estado para obligar al usuario a seleccionar el archivo corregido
         setArchivo(null);
-        document.getElementById("fileInput").value = ""; 
+        document.getElementById("fileInput").value = "";
       }
     } catch (err) {
       console.error(err);
-      setError("Error de conexión con el servidor. Por favor, vuelva a adjuntar el archivo.");
-      // Limpiamos también si hay un error de red
+      setError("Error de conexión con el servidor.");
       setArchivo(null);
       if (document.getElementById("fileInput")) {
         document.getElementById("fileInput").value = "";

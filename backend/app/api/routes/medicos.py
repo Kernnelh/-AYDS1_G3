@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 from app.core.security import verificar_token
 from app.db.database import get_db
 from app.models.medico import Medico, EstadoUsuarioEnum
-from app.schemas.medico import MedicoCreate
+from app.schemas.medico import MedicoCreate, MedicoUpdate
 from app.schemas.medico import HorarioCrear
 from app.models.medico import HorarioMedico, DiaAtencion
 from app.models.cita import Cita, EstadoCitaEnum
@@ -128,8 +128,8 @@ def establecer_horario(
         # Guardar cada día seleccionado
         for dia in horario_datos.dias:
             nuevo_dia = DiaAtencion(
-                id_horario=nuevo_horario.id_horario, 
-                dia=dia 
+                id_medico=id_medico_actual,
+                dia_semana=dia  # el campo en el modelo BD es dia_semana
             )
             db.add(nuevo_dia)
         
@@ -170,7 +170,8 @@ def obtener_citas_pendientes(
             "hora": cita.hora,
             "motivo": cita.motivo,
             "estado": cita.estado,
-            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido",
+             "correo_paciente": paciente.correo if paciente else "",
         })
         
     return resultado
@@ -310,3 +311,81 @@ def obtener_historial_citas_medico(
         })
         
     return resultado
+
+@router.get("/perfil", tags=["Médico"])
+def obtener_perfil_medico(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+    
+    medico = db.query(Medico).filter(
+        Medico.id_medico == usuario_actual.get("id")
+    ).first()
+
+    if not medico:
+        raise HTTPException(status_code=404, detail="Médico no encontrado")
+
+    horario = db.query(HorarioMedico).filter(HorarioMedico.id_medico == medico.id_medico).first()
+    dias = db.query(DiaAtencion).filter(DiaAtencion.id_medico == medico.id_medico).all()
+
+    return {
+        "id_medico": medico.id_medico,
+        "nombre": medico.nombre,
+        "apellido": medico.apellido,
+        "dpi": medico.dpi,
+        "genero": medico.genero,
+        "direccion": medico.direccion,
+        "telefono": medico.telefono,
+        "fecha_nacimiento": medico.fecha_nacimiento,
+        "fotografia": medico.fotografia,
+        "no_colegiado": medico.no_colegiado,
+        "especialidad": medico.especialidad,
+        "direccion_clinica": medico.direccion_clinica,
+        "correo": medico.correo,
+        "estado": medico.estado,
+        "fecha_registro": medico.fecha_registro,
+        "horario_inicio": horario.hora_inicio.strftime("%H:%M") if horario else None,
+        "horario_fin": horario.hora_fin.strftime("%H:%M") if horario else None,
+        "dias_atencion": [d.dia_semana for d in dias]
+    }
+
+
+@router.put("/perfil", tags=["Médico"])
+def actualizar_perfil_medico(
+    datos: MedicoUpdate,
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    if usuario_actual.get("rol") != "medico":
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+
+    medico = db.query(Medico).filter(
+        Medico.id_medico == usuario_actual.get("id")
+    ).first()
+
+    if not medico:
+        raise HTTPException(status_code=404, detail="Médico no encontrado")
+
+    medico.nombre           = datos.nombre
+    medico.apellido         = datos.apellido
+    medico.telefono         = datos.telefono
+    medico.direccion        = datos.direccion
+    medico.direccion_clinica = datos.direccion_clinica
+    medico.especialidad     = datos.especialidad
+    medico.genero           = datos.genero
+    medico.fecha_nacimiento = datos.fecha_nacimiento
+
+    db.commit()
+    db.refresh(medico)
+
+    horario = db.query(HorarioMedico).filter(HorarioMedico.id_medico == medico.id_medico).first()
+    dias = db.query(DiaAtencion).filter(DiaAtencion.id_medico == medico.id_medico).all()
+
+    return {
+        **medico.__dict__,
+        "horario_inicio": horario.hora_inicio.strftime("%H:%M") if horario else None,
+        "horario_fin": horario.hora_fin.strftime("%H:%M") if horario else None,
+        "dias_atencion": [d.dia_semana for d in dias]
+    }

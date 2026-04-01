@@ -1,11 +1,7 @@
 import { motion } from 'framer-motion';
 import { Size } from "../styles/Styles";
 
-export const AppointmentHistoryMedic = ({ appointments, pacientes }) => {
-  const getPacienteInfo = (idPaciente) => {
-    return pacientes.find(p => p.id_paciente === idPaciente);
-  };
-
+export const AppointmentHistoryMedic = ({ appointments }) => {
   const getStatusColor = (estado) => {
     switch (estado) {
       case 'Atendida':
@@ -41,7 +37,6 @@ export const AppointmentHistoryMedic = ({ appointments, pacientes }) => {
       ) : (
         <div className="space-y-4">
           {appointments.map((appointment, idx) => {
-            const paciente = getPacienteInfo(appointment.id_paciente);
 
             return (
               <motion.div
@@ -54,14 +49,14 @@ export const AppointmentHistoryMedic = ({ appointments, pacientes }) => {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h3 className={`${Size.LARGE} font-bold`}>
-                      {paciente?.nombre} {paciente?.apellido}
+                      {appointment.paciente}
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                       <div>
                         <p className={`${Size.MEDIUM} opacity-75`}>Fecha:</p>
                         <p className={`${Size.LARGE} font-semibold`}>
-                          {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                          {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                         </p>
                       </div>
 

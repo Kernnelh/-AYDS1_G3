@@ -29,3 +29,4 @@ class Paciente(Base):
     contrasena = Column(String(255), nullable=False)
     estado = Column(Enum(EstadoUsuarioEnum), default=EstadoUsuarioEnum.Pendiente)
     fecha_registro = Column(DateTime, default=func.now())
+

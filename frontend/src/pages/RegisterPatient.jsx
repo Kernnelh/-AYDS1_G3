@@ -18,14 +18,71 @@ import logo2 from "../assets/logo2.png";
 
 export const RegisterPatient = () => {
   const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const datos = new FormData(e.target);
+    setError(null);
+    setMensaje("");
+    setCargando(true);
 
-    console.log(Object.fromEntries(datos));
+    const form = e.target;
 
-    setMensaje("Cuenta creada con éxito");
+    // 1. Si hay foto, primero la subimos
+    let urlFoto = null;
+    const archivoFoto = form.txtFotografiaP.files[0];
+
+    if (archivoFoto) {
+      const formDataFoto = new FormData();
+      formDataFoto.append("file", archivoFoto);
+
+      const resFoto = await fetch("http://127.0.0.1:8000/api/upload/fotografia", {
+        method: "POST",
+        body: formDataFoto,
+      });
+
+      const datosFoto = await resFoto.json();
+      if (!resFoto.ok) {
+        setError("Error al subir la fotografía");
+        setCargando(false);
+        return;
+      }
+      urlFoto = datosFoto.url;
+    }
+
+    // 2. Registramos al paciente
+    try {
+      const respuesta = await fetch("http://127.0.0.1:8000/pacientes/registro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: form.txtNombreP.value,
+          apellido: form.txtApellidoP.value,
+          dpi: form.txtDPIP.value,
+          genero: form.txtGeneroP.value,
+          direccion: form.txtDireccionP.value,
+          telefono: form.txtTelefonoP.value,
+          fecha_nacimiento: form.txtNacimientoP.value,
+          fotografia: urlFoto,
+          correo: form.txtCorreoP.value,
+          contrasena: form.txtPasswordP.value,
+        }),
+      });
+
+      const datos = await respuesta.json();
+
+      if (respuesta.ok) {
+        setMensaje("¡Cuenta creada con éxito! Espera la aprobación del administrador.");
+        form.reset();
+      } else {
+        setError(datos.detail || "Error al registrar");
+      }
+    } catch (err) {
+      setError("Error de conexión con el servidor.");
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -119,8 +176,21 @@ export const RegisterPatient = () => {
 
               {/* Botón Crear Cuenta */}
               <div className="flex justify-center w-full mb-2">
-                <Button1 nombre='Crear cuenta Paciente' id='crearCuentaP' type='submit' link='' color={CButton.MATE} />
+                <Button1
+                  nombre={cargando ? 'Registrando...' : 'Crear cuenta Paciente'}
+                  id='crearCuentaP'
+                  type='submit'
+                  link=''
+                  color={CButton.MATE}
+                />
               </div>
+
+              {error && (
+                <div className="text-red-500 font-semibold text-center mt-2">
+                  {error}
+                </div>
+              )}
+
               {mensaje && (
                 <div className="text-green-600 font-semibold text-center mt-2">
                   {mensaje}

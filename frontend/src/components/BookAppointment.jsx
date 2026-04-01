@@ -30,70 +30,62 @@ export const BookAppointment = ({ doctor, onBook, existingAppointments }) => {
 
     if (!formData.fecha) newErrors.fecha = 'La fecha es requerida';
     if (!formData.hora) newErrors.hora = 'La hora es requerida';
-    if (!formData.motivo || formData.motivo.trim() === '') {
-      newErrors.motivo = 'El motivo es requerido';
-    }
+    if (!formData.motivo.trim()) newErrors.motivo = 'El motivo es requerido';
 
-    // Validar que sea una fecha futura
-    const selectedDate = new Date(formData.fecha);
-    if (selectedDate < new Date()) {
+    const hoy = new Date().toISOString().split('T')[0];
+    if (formData.fecha < hoy) {
       newErrors.fecha = 'No puedes agendar citas en fechas pasadas';
     }
 
-    // Validar que el paciente no tenga más de una cita con el mismo médico
-    const hasDuplicate = existingAppointments.some(
-      c => c.id_medico === doctor.id_medico && 
-           c.estado !== 'Cancelada_Paciente' && 
-           c.estado !== 'Cancelada_Medico'
-    );
+    // Normaliza hora a "HH:MM" para comparar correctamente
+    const horaFormulario = formData.hora?.slice(0, 5); // "10:00"
 
-    if (hasDuplicate) {
+    // No puede tener más de una cita activa con el mismo médico
+    const citaConMismoMedico = existingAppointments.some(
+      c => c.id_medico === doctor.id_medico &&
+        c.estado === 'Pendiente'
+    );
+    if (citaConMismoMedico) {
       newErrors.general = 'Ya tienes una cita activa con este médico';
     }
 
-    // Validar que no tenga dos citas el mismo día a la misma hora
-    const hasTimeConflict = existingAppointments.some(
-      c => c.fecha === formData.fecha && 
-           c.hora === formData.hora &&
-           c.estado !== 'Cancelada_Paciente' && 
-           c.estado !== 'Cancelada_Medico'
+    // No puede tener dos citas el mismo día a la misma hora
+    const citaMismoHorario = existingAppointments.some(
+      c => c.fecha === formData.fecha &&
+        c.hora?.slice(0, 5) === horaFormulario && // "10:00:00" → "10:00"
+        c.estado === 'Pendiente'
     );
-
-    if (hasTimeConflict) {
-      newErrors.hora = 'Ya tienes una cita a esta hora';
+    if (citaMismoHorario) {
+      newErrors.hora = 'Ya tienes una cita a esta hora ese día con otro médico';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
+    try {
+      await onBook({
+        id_medico: doctor.id_medico,
+        fecha: formData.fecha,
+        hora: formData.hora + ':00',
+        motivo: formData.motivo,
+      });
+
+      // Solo muestra éxito si onBook no lanzó error
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setFormData({ fecha: '', hora: '', motivo: '' });
+      }, 3000);
+
+    } catch (error) {
+      // Muestra el error del backend en el formulario
+      setErrors({ general: error.message });
     }
-
-    // CREAR NUEVA CITA - DATOS QUEMADOS CON ID DE PACIENTE 1
-    const newAppointment = {
-      id_cita: Math.max(...existingAppointments.map(c => c.id_cita), 0) + 1,
-      id_paciente: 1, // REEMPLAZAR CON ID DEL PACIENTE ACTUAL DEL SESSION/AUTH
-      id_medico: doctor.id_medico,
-      fecha: formData.fecha,
-      hora: formData.hora,
-      motivo: formData.motivo,
-      tratamiento: null,
-      estado: 'Pendiente',
-      fecha_creacion: new Date().toISOString(),
-      fecha_cancelacion: null,
-    };
-
-    onBook(newAppointment);
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setFormData({ fecha: '', hora: '', motivo: '' });
-    }, 3000);
   };
 
   return (
@@ -129,9 +121,8 @@ export const BookAppointment = ({ doctor, onBook, existingAppointments }) => {
             value={formData.fecha}
             onChange={handleInputChange}
             min={new Date().toISOString().split('T')[0]}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-              errors.fecha ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-            }`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.fecha ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+              }`}
           />
           {errors.fecha && <p className="text-red-600 text-sm mt-1">{errors.fecha}</p>}
         </div>
@@ -144,9 +135,8 @@ export const BookAppointment = ({ doctor, onBook, existingAppointments }) => {
             name="hora"
             value={formData.hora}
             onChange={handleInputChange}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-              errors.hora ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-            }`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.hora ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+              }`}
           />
           {errors.hora && <p className="text-red-600 text-sm mt-1">{errors.hora}</p>}
         </div>
@@ -160,9 +150,8 @@ export const BookAppointment = ({ doctor, onBook, existingAppointments }) => {
             onChange={handleInputChange}
             placeholder="Describe brevemente tus síntomas u otro motivo de la consulta"
             rows="4"
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 resize-none ${
-              errors.motivo ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-            }`}
+            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 resize-none ${errors.motivo ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+              }`}
           />
           {errors.motivo && <p className="text-red-600 text-sm mt-1">{errors.motivo}</p>}
         </div>

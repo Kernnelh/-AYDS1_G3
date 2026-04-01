@@ -34,7 +34,7 @@ export const TreatmentForm = ({ appointment, paciente, onSave, onClose }) => {
             <div>
               <p className={`${Size.MEDIUM} text-gray-600`}>Fecha:</p>
               <p className={`${Size.LARGE} font-semibold`}>
-                {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
               </p>
             </div>
             <div>

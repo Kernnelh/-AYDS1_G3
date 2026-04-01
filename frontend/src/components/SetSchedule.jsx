@@ -47,12 +47,17 @@ export const SetSchedule = ({ medico, onUpdate }) => {
     return true;
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
-      onUpdate(formData);
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    try {
+      await onUpdate(formData);
       setSuccess(true);
       setIsEditing(false);
       setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      // Muestra el error del backend en pantalla
+      setErrors(err.message);
     }
   };
 

@@ -8,6 +8,13 @@ from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
 from app.schemas.admin import ActualizarEstado
 from app.core.security import verificar_token
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# Clave secreta para el segundo factor de autenticación (2FA)
+ADMIN_2FA_KEY = os.getenv("ADMIN_2FA_KEY")
+
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -28,20 +35,16 @@ async def validar_segundo_factor(
 
     # 3. Buscar al administrador en la base de datos
     # Como no tenemos modelo de SQLAlchemy para Admin, usamos una consulta SQL directa
-    resultado = db.execute(
-        text("SELECT contrasena_encrp FROM Administrador WHERE usuario = :user"), 
+    admin = db.execute(
+        text("SELECT usuario FROM Administrador WHERE usuario = :user"),
         {"user": usuario}
     ).fetchone()
 
-    if not resultado:
+    if not admin:
         raise HTTPException(status_code=404, detail="Administrador no encontrado")
 
-    hash_guardado = resultado[0]
-
-    # 4. Validar la contraseña del archivo contra el hash de la base de datos
-    # NOTA: Si el profesor pide que el archivo contenga literalmente el texto encriptado (el hash), 
-    # cambia esta línea por: if contrasena_archivo != hash_guardado:
-    if not pwd_context.verify(contrasena_archivo, hash_guardado):
+    # 4. Validar contra la clave quemada en .env
+    if contrasena_archivo != ADMIN_2FA_KEY:
         raise HTTPException(status_code=401, detail="La contraseña del archivo es incorrecta")
 
     # Si todo está bien, le damos acceso

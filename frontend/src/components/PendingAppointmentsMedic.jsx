@@ -10,9 +10,6 @@ export const PendingAppointmentsMedic = ({
   cancelingId,
   setCancelingId
 }) => {
-  const getPacienteInfo = (idPaciente) => {
-    return pacientes.find(p => p.id_paciente === idPaciente);
-  };
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -30,7 +27,6 @@ export const PendingAppointmentsMedic = ({
         <div className="space-y-4">
           <AnimatePresence>
             {appointments.map((appointment, idx) => {
-              const paciente = getPacienteInfo(appointment.id_paciente);
               const isConfirmingCancel = cancelingId === appointment.id_cita;
 
               return (
@@ -45,14 +41,14 @@ export const PendingAppointmentsMedic = ({
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className={`${Size.LARGE} font-bold text-gray-800`}>
-                        {paciente?.nombre} {paciente?.apellido}
+                        <h3>{appointment.paciente}</h3>
                       </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                           <p className={`${Size.MEDIUM} text-gray-600`}>Fecha:</p>
                           <p className={`${Size.LARGE} font-semibold text-gray-800`}>
-                            {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                            {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                           </p>
                         </div>
 
@@ -73,7 +69,7 @@ export const PendingAppointmentsMedic = ({
                         <div className="md:col-span-2">
                           <p className={`${Size.MEDIUM} text-gray-600`}>Contacto:</p>
                           <p className={`${Size.MEDIUM} text-gray-800`}>
-                            📧 {paciente?.correo} | 📱 {paciente?.telefono}
+                            {appointment.correo_paciente}
                           </p>
                         </div>
                       </div>

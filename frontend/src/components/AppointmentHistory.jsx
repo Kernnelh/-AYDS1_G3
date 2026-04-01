@@ -2,14 +2,11 @@ import { motion } from 'framer-motion';
 import { MdHistory, MdCheckCircle, MdCancel } from 'react-icons/md';
 import { Size, SizeBox, CButton, Background } from "../styles/Styles";
 
-export const AppointmentHistory = ({ appointments, medicos }) => {
+export const AppointmentHistory = ({ appointments }) => {
   const historyAppointments = appointments.filter(
     a => a.estado === 'Atendida' || a.estado === 'Cancelada_Paciente' || a.estado === 'Cancelada_Medico'
   );
 
-  const getDoctorInfo = (idMedico) => {
-    return medicos.find(m => m.id_medico === idMedico);
-  };
 
   const getStatusColor = (estado) => {
     switch (estado) {
@@ -52,8 +49,6 @@ export const AppointmentHistory = ({ appointments, medicos }) => {
       ) : (
         <div className="space-y-4">
           {historyAppointments.map((appointment, idx) => {
-            const doctor = getDoctorInfo(appointment.id_medico);
-
             return (
               <motion.div
                 key={appointment.id_cita}
@@ -67,7 +62,7 @@ export const AppointmentHistory = ({ appointments, medicos }) => {
                     <div className="flex items-center gap-2 mb-2">
                       {getStatusIcon(appointment.estado)}
                       <h3 className={`${Size.LARGE} font-bold`}>
-                        Dr(a). {doctor?.nombre} {doctor?.apellido}
+                        {appointment.medico}
                       </h3>
                     </div>
 
@@ -75,7 +70,7 @@ export const AppointmentHistory = ({ appointments, medicos }) => {
                       <div>
                         <p className={`${Size.MEDIUM} opacity-75`}>Fecha:</p>
                         <p className={`${Size.LARGE} font-semibold`}>
-                          {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                          {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                         </p>
                       </div>
 
@@ -89,7 +84,7 @@ export const AppointmentHistory = ({ appointments, medicos }) => {
                       <div className="md:col-span-2">
                         <p className={`${Size.MEDIUM} opacity-75`}>Clínica:</p>
                         <p className={`${Size.MEDIUM}`}>
-                          {doctor?.direccion_clinica}
+                          {appointment.direccion_clinica}
                         </p>
                       </div>
 
