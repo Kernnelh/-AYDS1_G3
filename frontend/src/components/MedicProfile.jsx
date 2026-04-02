@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export const MedicProfile = ({ medico, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);

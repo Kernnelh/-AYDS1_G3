@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { MdHistory, MdCheckCircle, MdCancel } from 'react-icons/md';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 
 export const AppointmentHistory = ({ appointments }) => {
   const historyAppointments = appointments.filter(

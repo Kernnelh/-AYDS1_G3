@@ -8,7 +8,7 @@ import { FaPhotoVideo } from "react-icons/fa";
 import { IoMdMailOpen } from "react-icons/io";
 
 // Estilos y componentes
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 import { IconButton } from "../components/IconButton";
 import { Input2 } from "../components/Input2";
 import { Button1 } from "../components/Button1";

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdEdit, MdSave, MdClose } from 'react-icons/md';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 
 export const PatientProfile = ({ paciente, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);

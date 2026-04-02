@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { MdCheckCircle, MdCancel } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 const DEFAULT_AVATAR = 'https://via.placeholder.com/200x200?text=Doctor';
 

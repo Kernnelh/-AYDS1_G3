@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdCalendarToday, MdAccessTime } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export const DoctorSchedule = ({ doctor, citas }) => {
   const [selectedDate, setSelectedDate] = useState('');
