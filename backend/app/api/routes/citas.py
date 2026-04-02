@@ -133,6 +133,9 @@ def obtener_medicos_disponibles(
             "nombre": medico.nombre,
             "apellido": medico.apellido,
             "especialidad": medico.especialidad,
+            "fotografia": medico.fotografia,  # AGREGAR
+            "direccion_clinica": medico.direccion_clinica,  
+            "telefono": medico.telefono, 
             "horario": horario_formateado
         })
         

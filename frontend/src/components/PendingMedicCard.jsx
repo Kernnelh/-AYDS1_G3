@@ -58,7 +58,7 @@ export const PendingMedicCard = ({ medico, onApprove, onReject }) => {
           {/* Número Colegiado */}
           <div className="col-span-2">
             <p className="text-gray-500 font-semibold text-xs uppercase tracking-wide">N° Colegiado</p>
-            <p className="text-gray-700 font-semibold">{medico.numero_colegiado}</p>
+            <p className="text-gray-700 font-semibold">{medico.no_colegiado}</p>
           </div>
         </div>
 

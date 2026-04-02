@@ -56,7 +56,7 @@ export const ApprovedMedicCard = ({ medico, onDeactivate }) => {
           </div>
           <div className="col-span-2">
             <p className="text-gray-500 font-semibold uppercase">N° Colegiado</p>
-            <p className="text-gray-700">{medico.numero_colegiado}</p>
+            <p className="text-gray-700">{medico.no_colegiado}</p>
           </div>
         </div>
 

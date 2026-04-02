@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Size } from "../styles/Styles";
+import { useState } from 'react';  
 
 export const PendingAppointmentsMedic = ({
   appointments,
@@ -11,6 +12,8 @@ export const PendingAppointmentsMedic = ({
   setCancelingId
 }) => {
 
+  // Agrega estado para el motivo en PendingAppointmentsMedic.jsx
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className={`${Size.LARGE} font-bold text-gray-800 mb-6`}>
@@ -41,7 +44,7 @@ export const PendingAppointmentsMedic = ({
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className={`${Size.LARGE} font-bold text-gray-800`}>
-                        <h3>{appointment.paciente}</h3>
+                        {appointment.paciente}
                       </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
@@ -90,20 +93,37 @@ export const PendingAppointmentsMedic = ({
                             ¿Cancelar cita?
                           </p>
                           <p className={`${Size.SMALL} text-gray-600`}>
-                            Se enviará correo al paciente
+                            Se notificará al paciente por correo
                           </p>
+                          <textarea
+                            value={motivoCancelacion}
+                            onChange={(e) => setMotivoCancelacion(e.target.value)}
+                            placeholder="Motivo de cancelación..."
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                          />
                           <div className="flex gap-2">
                             <button
-                              onClick={() => onConfirmCancel(appointment.id_cita)}
+                              onClick={() => {
+                                if (!motivoCancelacion.trim()) {
+                                  alert('Debes ingresar un motivo de cancelación');
+                                  return;
+                                }
+                                onConfirmCancel(appointment.id_cita, motivoCancelacion);
+                                setMotivoCancelacion('');
+                              }}
                               className="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 font-semibold text-sm"
                             >
-                              Sí
+                              Confirmar
                             </button>
                             <button
-                              onClick={() => setCancelingId(null)}
+                              onClick={() => {
+                                setCancelingId(null);
+                                setMotivoCancelacion('');
+                              }}
                               className="flex-1 bg-gray-400 text-white py-2 rounded hover:bg-gray-500 font-semibold text-sm"
                             >
-                              No
+                              Volver
                             </button>
                           </div>
                         </div>

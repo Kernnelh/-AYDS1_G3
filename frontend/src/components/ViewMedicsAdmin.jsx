@@ -21,7 +21,7 @@ export const ViewMedicsAdmin = ({ medicosAprobados, onDeactivate }) => {
         const dpi = medico.dpi.toLowerCase();
         const correo = medico.correo.toLowerCase();
         const especialidad = medico.especialidad.toLowerCase();
-        const colegiado = medico.numero_colegiado.toLowerCase();
+        const colegiado = (medico.no_colegiado || '').toLowerCase();     //El || '' evita que explote si el campo viene vacío.
         return (
           fullName.includes(query) ||
           dpi.includes(query) ||

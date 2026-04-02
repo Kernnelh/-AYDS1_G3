@@ -171,7 +171,7 @@ def obtener_citas_pendientes(
             "motivo": cita.motivo,
             "estado": cita.estado,
             "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido",
-             "correo_paciente": paciente.correo if paciente else "",
+            "correo_paciente": paciente.correo if paciente else "",
         })
         
     return resultado
@@ -307,6 +307,8 @@ def obtener_historial_citas_medico(
             "fecha": cita.fecha,
             "hora": cita.hora,
             "estado": cita.estado,
+            "motivo": cita.motivo,          
+            "tratamiento": cita.tratamiento, 
             "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
         })
         
