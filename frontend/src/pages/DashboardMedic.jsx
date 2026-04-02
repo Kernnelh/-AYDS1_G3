@@ -93,12 +93,12 @@ export const DashboardMedic = () => {
   };
 
   // Cancelar cita → PUT /api/medicos/citas/{id}/cancelar
-  const handleCancelAppointment = async (appointmentId) => {
+  const handleCancelAppointment = async (appointmentId, motivoCancelacion) => {
     try {
       const res = await fetch(`${API}/api/medicos/citas/${appointmentId}/cancelar`, {
         method: 'PUT',
         headers: authHeaders,
-        body: JSON.stringify({ motivo_cancelacion: 'Cancelado por el médico' }),
+        body: JSON.stringify({ motivo_cancelacion: motivoCancelacion }),
       });
 
       if (!res.ok) {
