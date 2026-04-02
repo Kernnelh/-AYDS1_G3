@@ -341,7 +341,7 @@ uvicorn app.main:app --reload
 ```bash
 npm run dev
 ```
-La aplicación estará disponible en `http://localhost:3000`
+La aplicación estará disponible en `http://localhost:5173`
 
 ### Modo producción
 ```bash
@@ -364,3 +364,31 @@ frontend/
 ├── package.json
 └── README.md
 ```
+
+---
+
+# Ejecución Global con Docker Compose
+
+Para facilitar el despliegue a producción o para miembros del equipo con Docker instalado, el proyecto cuenta con un archivo `docker-compose.yml` en la raíz. Este archivo orquesta el Backend y el Frontend simultáneamente.
+
+### 1. Preparar Variables de Entorno
+Dirígete a la carpeta `/backend`.
+Copia el archivo `.env.example` y renómbralo a `.env`.
+Abre el nuevo archivo `.env` y coloca tu contraseña de MySQL local y asegúrate de que el host sea el interno de Docker:
+`DB_HOST=host.docker.internal`
+
+### 2. Levantar el Proyecto
+Abre una terminal en la **raíz del proyecto** (donde está el `docker-compose.yml`).
+Ejecuta el siguiente comando:
+`docker compose up --build`
+
+Posterior al build, si solamente quieres levantarlo utiliza: 
+`docker compose up`
+
+### 3. Acceder a los servicios
+**Frontend (Vite):** http://localhost:5173
+**Backend (FastAPI Docs):** http://localhost:8000/docs
+
+*Nota:* La base de datos MySQL debe estar encendida en tu máquina física en el puerto 3306 para que el backend de Docker logre conectarse.
+
+---
