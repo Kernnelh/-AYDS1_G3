@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Size, CButton, Background } from "../styles/Styles";
+import { Size, CButton, Background } from "../styles/styles";
 import { Button1 } from "../components/Button1";
 import { PendingAppointmentsMedic } from "../components/PendingAppointmentsMedic";
 import { TreatmentForm } from "../components/TreatmentForm";

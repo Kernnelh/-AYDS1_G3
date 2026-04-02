@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export const ActiveAppointments = ({ appointments, onCancel }) => {
   const [cancelingId, setCancelingId] = useState(null);

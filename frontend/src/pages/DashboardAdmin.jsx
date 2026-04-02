@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Size, Background, CButton } from "../styles/Styles";
+import { Size, Background, CButton } from "../styles/styles";
 import { Button1 } from "../components/Button1";
 import { ApprovePatientsAdmin } from "../components/ApprovePatientsAdmin";
 import { ApproveMedicsAdmin } from "../components/ApproveMedicsAdmin";

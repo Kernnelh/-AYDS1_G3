@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdSearch, MdDelete, MdPersonAdd } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 import { PendingPatientCard } from "./PendingPatientCard";
 
 export const ApprovePatientsAdmin = ({ pacientesPendientes, onApprove, onReject }) => {

@@ -1,0 +1,18 @@
+services:
+  # 1. Backend FastAPI
+  backend:
+    build: ./backend
+    container_name: saludplus-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env 
+
+  # 2. Frontend React/Vite
+  frontend:
+    build: ./frontend
+    container_name: saludplus-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

@@ -5,6 +5,23 @@
 * [Módulos](#Módulos)
 * [Documentación](#Documentación)
 * [Tecnologías](#Tecnologías)
+---
+## Guía de Inicio Rápido
+
+El proyecto está diseñado para ejecutarse de dos formas, dependiendo de la capacidad del equipo en donde trabajes:
+
+### Opción 1: Todo en uno con Docker (Recomendado)
+Si tienes Docker Desktop instalado, puedes levantar el Backend y el Frontend con un solo comando desde la raíz del proyecto:
+`docker compose up --build`
+
+Posterior al build, si solamente quieres levantarlo utiliza: 
+`docker compose up`
+
+### Opción 2: Ejecución Manual (Por si no te corre Docker)
+Si prefieres levantar los servicios uno por uno sin virtualización, sigue las instrucciones detalladas en el **Manual Técnico**:
+* [Levantar la Base de Datos](./documentation/06_manual_tecnico.md#opción-1--usando-mysql-desde-consola)
+* [Levantar el Backend con Uvicorn](./documentation/06_manual_tecnico.md#🚀-guía-de-instalación-y-ejecución)
+* [Levantar el Frontend con Node](./documentation/06_manual_tecnico.md#frontend---guía-de-instalación-y-ejecución)
 
 ---
 

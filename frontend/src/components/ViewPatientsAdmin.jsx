@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdSearch, MdPeople } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 import { ApprovedPatientCard } from "./ApprovedPatientCard";
 
 export const ViewPatientsAdmin = ({ pacientesAprobados, onDeactivate }) => {

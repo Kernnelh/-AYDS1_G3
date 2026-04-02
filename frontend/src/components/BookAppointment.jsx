@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdEventNote } from 'react-icons/md';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 export const BookAppointment = ({ doctor, onBook, existingAppointments }) => {
   const [formData, setFormData] = useState({
     fecha: '',

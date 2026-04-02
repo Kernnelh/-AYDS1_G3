@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 import { useState } from 'react';  
 
 export const PendingAppointmentsMedic = ({

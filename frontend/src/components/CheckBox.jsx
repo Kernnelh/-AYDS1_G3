@@ -1,4 +1,4 @@
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export function CheckBox() {
     return (

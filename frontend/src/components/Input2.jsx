@@ -1,4 +1,4 @@
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export function Input2(type, id, placeholder, icon, options = null, extraProps = {}) {
     return (

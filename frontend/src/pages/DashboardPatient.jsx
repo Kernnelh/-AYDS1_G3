@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MdSearch, MdClose, MdLogout } from 'react-icons/md';
-import { Size, CButton, Background } from "../styles/Styles";
+import { Size, CButton, Background } from "../styles/styles";
 import { Button1 } from "../components/Button1";
 import { DoctorCard } from "../components/DoctorCard";
 import { DoctorSchedule } from "../components/DoctorSchedule";
