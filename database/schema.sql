@@ -1,6 +1,6 @@
 /*
 ==========================================================
-SCRIPT DE CREACIÓN DE BASE DE DATOS: SaludPlus
+SCRIPT DE CREACIÓN DE BASE DE DATOS: SaludPlus (Fase 2)
 Motor: MySQL
 ==========================================================
 */
@@ -29,9 +29,12 @@ CREATE TABLE Paciente (
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(15) NOT NULL,
     fecha_nacimiento DATE NOT NULL,
-    fotografia VARCHAR(255) NULL,
+    fotografia VARCHAR(255) NOT NULL,
+    archivo_dpi VARCHAR(255) NOT NULL, 
     correo VARCHAR(150) UNIQUE NOT NULL,
     contrasena VARCHAR(255) NOT NULL,
+    token_verificacion VARCHAR(255) NULL, 
+    correo_verificado BOOLEAN DEFAULT FALSE, 
     estado ENUM('Pendiente', 'Aprobado', 'Rechazado', 'Desactivado') DEFAULT 'Pendiente',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -49,11 +52,14 @@ CREATE TABLE Medico (
     direccion VARCHAR(255) NOT NULL,
     telefono VARCHAR(15) NOT NULL,
     fotografia VARCHAR(255) NOT NULL,
+    archivo_cv VARCHAR(255) NOT NULL, 
     no_colegiado VARCHAR(20) UNIQUE NOT NULL,
     especialidad VARCHAR(100) NOT NULL,
     direccion_clinica VARCHAR(255) NOT NULL,
     correo VARCHAR(150) UNIQUE NOT NULL,
     contrasena VARCHAR(255) NOT NULL,
+    token_verificacion VARCHAR(255) NULL, 
+    correo_verificado BOOLEAN DEFAULT FALSE, 
     estado ENUM('Pendiente', 'Aprobado', 'Rechazado', 'Desactivado') DEFAULT 'Pendiente',
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -81,7 +87,7 @@ CREATE TABLE Dia_Atencion (
 );
 
 -- ----------------------------------------------------------
--- ENTIDAD: Cita
+-- Cita
 -- ----------------------------------------------------------
 CREATE TABLE Cita (
     id_cita INT AUTO_INCREMENT PRIMARY KEY,
@@ -90,7 +96,6 @@ CREATE TABLE Cita (
     fecha DATE NOT NULL,
     hora TIME NOT NULL,
     motivo TEXT NOT NULL,
-    tratamiento TEXT NULL,
     estado ENUM(
         'Pendiente', 
         'Atendida', 
@@ -101,4 +106,62 @@ CREATE TABLE Cita (
     fecha_cancelacion TIMESTAMP NULL,
     FOREIGN KEY (id_paciente) REFERENCES Paciente(id_paciente) ON DELETE CASCADE,
     FOREIGN KEY (id_medico) REFERENCES Medico(id_medico) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------
+-- Tratamiento
+-- ----------------------------------------------------------
+CREATE TABLE Tratamiento (
+    id_tratamiento INT AUTO_INCREMENT PRIMARY KEY,
+    id_cita INT UNIQUE NOT NULL, 
+    diagnostico TEXT NOT NULL,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cita) REFERENCES Cita(id_cita) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------
+-- Medicamento_Recetado
+-- ----------------------------------------------------------
+CREATE TABLE Medicamento_Recetado (
+    id_medicamento INT AUTO_INCREMENT PRIMARY KEY,
+    id_tratamiento INT NOT NULL,
+    nombre VARCHAR(150) NOT NULL,
+    cantidad VARCHAR(50) NOT NULL,
+    tiempo_medicamento VARCHAR(100) NOT NULL,
+    descripcion_dosis TEXT NOT NULL,
+    FOREIGN KEY (id_tratamiento) REFERENCES Tratamiento(id_tratamiento) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------
+-- Calificacion
+-- ----------------------------------------------------------
+CREATE TABLE Calificacion (
+    id_calificacion INT AUTO_INCREMENT PRIMARY KEY,
+    id_cita INT NOT NULL,
+    autor ENUM('Paciente', 'Medico') NOT NULL,
+    estrellas INT NOT NULL CHECK (estrellas >= 0 AND estrellas <= 5),
+    comentario TEXT NULL,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cita) REFERENCES Cita(id_cita) ON DELETE CASCADE
+);
+
+-- ----------------------------------------------------------
+-- Reporte
+-- ----------------------------------------------------------
+CREATE TABLE Reporte (
+    id_reporte INT AUTO_INCREMENT PRIMARY KEY,
+    id_cita INT NOT NULL,
+    autor ENUM('Paciente', 'Medico') NOT NULL,
+    categoria ENUM(
+        'Conducta inapropiada', 
+        'Falsificación de documentos', 
+        'Agresión verbal o física', 
+        'Robo o daño a las instalaciones',
+        'Falta de profesionalismo',
+        'Otro'
+    ) NOT NULL,
+    explicacion TEXT NOT NULL,
+    estado VARCHAR(50) DEFAULT 'Pendiente_Revision',
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_cita) REFERENCES Cita(id_cita) ON DELETE CASCADE
 );
