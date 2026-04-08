@@ -65,6 +65,14 @@ DB_PORT=3306
 DB_NAME=nombre_de_tu_base_de_datos
 ```
 
+Este proyecto utiliza notificaciones por correo electrónico en tiempo real. Para que el backend funcione correctamente, debes configurar las variables de entorno.
+
+```
+1. En la carpeta raíz del `backend`, crea un archivo llamado `.env`.
+2. Copia el contenido del archivo `.env.example` y pégalo en tu nuevo `.env`.
+3. Reemplaza los valores de `SENDER_EMAIL` y `SENDER_PASSWORD` con las credenciales de una cuenta de Gmail (usando una Contraseña de Aplicación).
+```
+
 ### 5. Ejecutar servidor local
 ```
 uvicorn app.main:app --reload

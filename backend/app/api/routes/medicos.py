@@ -1,6 +1,5 @@
 from datetime import datetime
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.core.security import verificar_token
@@ -12,6 +11,7 @@ from app.models.medico import HorarioMedico, DiaAtencion
 from app.models.cita import Cita, EstadoCitaEnum
 from app.models.paciente import Paciente
 from pydantic import BaseModel
+from app.core.email import enviar_correo_cancelacion
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -219,6 +219,7 @@ def atender_cita(
 def cancelar_cita_medico(
     id_cita: int,
     datos: CancelacionMedico,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     usuario_actual: dict = Depends(verificar_token)
 ):
@@ -245,27 +246,25 @@ def cancelar_cita_medico(
     medico_db = db.query(Medico).filter(Medico.id_medico == id_medico_actual).first()
 
     # 3. Cambiamos el estado en la Base de Datos
+    motivo_original = cita_db.motivo
+    nuevo_motivo = f"{datos.motivo_cancelacion} (Motivo original: {motivo_original})"
+
+
     cita_db.estado = EstadoCitaEnum.Cancelada_Medico
     cita_db.fecha_cancelacion = datetime.now()
+    cita_db.motivo = nuevo_motivo
     db.commit()
     db.refresh(cita_db)
 
-    # 4. --- LÓGICA DE CORREO SIMULADO (COMPROBANTE TÉCNICO) ---
-    # Esto se imprimirá en la terminal de Uvicorn (tu servidor)
-    print("\n" + "="*60)
-    print(f"📧 SIMULACIÓN SMTP - ENVIANDO CORREO A: {paciente_db.correo}")
-    print("ASUNTO: Notificación importante - Cancelación de Cita Médica")
-    print("-" * 60)
-    print(f"Estimado/a {paciente_db.nombre} {paciente_db.apellido},")
-    print("Le informamos que su cita ha sido cancelada debido a contratiempos por parte de la clínica.\n")
-    print("📋 DETALLES DE LA CANCELACIÓN:")
-    print(f"  • Fecha de cita cancelada: {cita_db.fecha}")
-    print(f"  • Hora de cita cancelada: {cita_db.hora}")
-    print(f"  • Médico: Dr. {medico_db.nombre} {medico_db.apellido}")
-    print(f"  • Motivo de la cancelación: {datos.motivo_cancelacion}\n")
-    print("Mensaje de disculpa:")
-    print("Lamentamos sinceramente los inconvenientes que esto le pueda causar. Por favor, ingrese a su perfil para reprogramar su cita en un nuevo horario disponible.")
-    print("="*60 + "\n")
+    # 4. --- LÓGICA DE CORREO (COMPROBANTE TÉCNICO) ---
+    background_tasks.add_task(
+        enviar_correo_cancelacion,
+        destinatario=paciente_db.correo,
+        nombre_paciente=paciente_db.nombre,
+        fecha=str(cita_db.fecha),
+        hora=str(cita_db.hora),
+        medico=f"Dr(a). {medico_db.nombre} {medico_db.apellido}",
+        motivo=nuevo_motivo)
     # ----------------------------------------------------------
 
     return {
