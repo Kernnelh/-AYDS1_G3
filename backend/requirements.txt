@@ -9,3 +9,5 @@ SQLAlchemy
 pymysql
 python-dotenv
 email-validator
+reportlab
+bcrypt

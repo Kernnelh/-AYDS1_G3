@@ -1,8 +1,13 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+import io
+from app.models.cita import Cita, EstadoCitaEnum
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.db.database import get_db
-from sqlalchemy import text
+from sqlalchemy import text, func, desc
 from app.db.database import get_db
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
@@ -13,7 +18,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Clave secreta para el segundo factor de autenticación (2FA)
-ADMIN_2FA_KEY = os.getenv("ADMIN_2FA_KEY")
+ADMIN_2FA_KEY = os.getenv("SECRET_KEY")
 
 
 router = APIRouter()
@@ -155,3 +160,114 @@ def dar_de_baja_usuario(
         "mensaje": f"{tipo_usuario.capitalize()} dado de baja exitosamente", 
         "nuevo_estado": usuario_db.estado
     }
+@router.get("/reportes/medicos-mas-atendidos", tags=["Administrador", "Reportes"])
+def reporte_top_medicos_pdf(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Genera un PDF con los médicos que más pacientes han atendido"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo administradores.")
+
+    # 1. Consultar la base de datos (como lo teníamos antes)
+    conteo = db.query(
+        Medico.nombre, 
+        Medico.apellido, 
+        func.count(Cita.id_cita).label("total_atendidos")
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .filter(Cita.estado == EstadoCitaEnum.Atendida)\
+     .group_by(Medico.id_medico)\
+     .order_by(desc("total_atendidos"))\
+     .limit(10).all()
+
+    # 2. Crear el PDF en memoria
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Diseño del Título
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, 750, "Reporte: Médicos con más pacientes atendidos")
+    c.setFont("Helvetica", 10)
+    c.drawString(50, 735, "Clínica Médica - Generado automáticamente")
+    
+    # Diseño de la cabecera de la tabla
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, 690, "Nombre del Médico")
+    c.drawString(400, 690, "Citas Atendidas")
+    c.line(50, 680, 500, 680) # Línea separadora
+    
+    # Imprimir los datos
+    c.setFont("Helvetica", 12)
+    y = 650
+    for fila in conteo:
+        nombre = f"Dr(a). {fila.nombre} {fila.apellido}"
+        total = str(fila.total_atendidos)
+        
+        c.drawString(50, y, nombre)
+        c.drawString(400, y, total)
+        y -= 25 # Moverse hacia abajo para la siguiente fila
+        
+    c.save()
+    buffer.seek(0)
+
+    # 3. Retornar el archivo PDF
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": "attachment; filename=reporte_medicos.pdf"}
+    )
+
+
+@router.get("/reportes/especialidades-mas-solicitadas", tags=["Administrador", "Reportes"])
+def reporte_top_especialidades_pdf(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Genera un PDF con las especialidades que más citas han generado"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo administradores.")
+
+    # 1. Consultar la base de datos
+    conteo = db.query(
+        Medico.especialidad, 
+        func.count(Cita.id_cita).label("total_citas")
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .group_by(Medico.especialidad)\
+     .order_by(desc("total_citas")).all()
+
+    # 2. Crear el PDF en memoria
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Diseño del Título
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, 750, "Reporte: Especialidades más solicitadas")
+    c.setFont("Helvetica", 10)
+    c.drawString(50, 735, "Clínica Médica - Generado automáticamente")
+    
+    # Diseño de la cabecera de la tabla
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, 690, "Especialidad")
+    c.drawString(400, 690, "Total de Citas Generadas")
+    c.line(50, 680, 500, 680) 
+    
+    # Imprimir los datos
+    c.setFont("Helvetica", 12)
+    y = 650
+    for fila in conteo:
+        especialidad = fila.especialidad
+        total = str(fila.total_citas)
+        
+        c.drawString(50, y, especialidad)
+        c.drawString(400, y, total)
+        y -= 25 
+        
+    c.save()
+    buffer.seek(0)
+
+    # 3. Retornar el archivo PDF
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": "attachment; filename=reporte_especialidades.pdf"}
+    )

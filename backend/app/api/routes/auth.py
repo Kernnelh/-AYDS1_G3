@@ -52,3 +52,12 @@ def iniciar_sesion(credenciales: LoginRequest, db: Session = Depends(get_db)):
 
     # 4. Si no se encontró en ningún lado o la contraseña es incorrecta
     raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+
+
+# ENDPOINT DE PRUEBA PARA GENERAR HASH DE CONTRASEÑA
+@router.get("/generar-clave", tags=["Test"])
+def generar_clave():
+    """Genera un hash nativo compatible con este backend"""
+    # Usamos tu propio pwd_context que ya está configurado en auth.py
+    hash_real = pwd_context.hash("ingrese_contraseña")
+    return {"hash_generado": hash_real}
