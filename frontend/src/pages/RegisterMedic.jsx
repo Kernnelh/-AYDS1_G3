@@ -51,7 +51,44 @@ export const RegisterMedic = () => {
       urlFoto = datosFoto.url;
     }
 
-    // 2. Registramos al médico
+    // 2. Subimos el CV (obligatorio)
+    const archivoCV = form.txtCvPdf.files[0];
+
+    if (!archivoCV) {
+      setError('Debes subir tu Curriculum Vitae en PDF');
+      setCargando(false);
+      return;
+    }
+
+    if (archivoCV.type !== 'application/pdf') {
+      setError('El Curriculum Vitae debe ser un PDF');
+      setCargando(false);
+      return;
+    }
+
+    if (archivoCV.size > 2 * 1024 * 1024) {
+      setError('El PDF del Curriculum Vitae no debe superar los 2MB');
+      setCargando(false);
+      return;
+    }
+
+    const formDataCV = new FormData();
+    formDataCV.append('file', archivoCV);
+
+    const resCV = await fetch('http://127.0.0.1:8000/api/upload/documento', {
+      method: 'POST',
+      body: formDataCV,
+    });
+
+    const datosCV = await resCV.json();
+    if (!resCV.ok) {
+      setError('Error al subir el Curriculum Vitae');
+      setCargando(false);
+      return;
+    }
+    const urlCV = datosCV.url;
+
+    // 3. Registramos al médico
     try {
       const respuesta = await fetch("http://127.0.0.1:8000/api/medicos/registro", {
         method: "POST",
@@ -169,6 +206,34 @@ export const RegisterMedic = () => {
                 <div className="flex flex-col lg:flex-row gap-x-5">
                   <div className="flex-1">
                     {Input2("text", "txtDireccionClinicaM", "Direccion de la clínica", <MdTextSnippet className="text-gray-700 text-xl" />)}
+                  </div>
+                </div>
+
+                {/* CV en PDF */}
+                <div className="flex flex-col lg:flex-row gap-x-5">
+                  <div className="flex-1">
+                    {Input2(
+                      "file",
+                      "txtCvPdf",
+                      "Curriculum Vitae en PDF",
+                      <MdTextSnippet className="text-gray-700 text-xl" />,
+                      null,
+                      {
+                        accept: ".pdf,application/pdf",
+                        onChange: (e) => {
+                          const file = e.target.files[0];
+                          if (file && file.size > 2 * 1024 * 1024) {
+                            setError('El PDF del CV no debe superar los 2MB');
+                            e.target.value = '';
+                          } else {
+                            setError(null);
+                          }
+                        }
+                      }
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      Solo archivos PDF · Peso máximo: 2MB
+                    </p>
                   </div>
                 </div>
 

@@ -51,7 +51,45 @@ export const RegisterPatient = () => {
       urlFoto = datosFoto.url;
     }
 
-    // 2. Registramos al paciente
+    // 2. Después de subir la foto y antes de registrar al paciente tenemos que subir el PDF del DPI, ya que es obligatorio para el registro:
+    const archivoDPI = form.txtDpiPdf.files[0];
+
+    if (!archivoDPI) {
+      setError('Debes subir el archivo PDF de tu DPI');
+      setCargando(false);
+      return;
+    }
+
+    if (archivoDPI.type !== 'application/pdf') {
+      setError('El archivo del DPI debe ser un PDF');
+      setCargando(false);
+      return;
+    }
+
+    if (archivoDPI.size > 2 * 1024 * 1024) { // 2MB
+      setError('El archivo PDF del DPI no debe superar los 2MB');
+      setCargando(false);
+      return;
+    }
+
+    // Subir el PDF al backend
+    const formDataDPI = new FormData();
+    formDataDPI.append('file', archivoDPI);
+
+    const resDPI = await fetch('http://127.0.0.1:8000/api/upload/documento', {
+      method: 'POST',
+      body: formDataDPI,
+    });
+
+    const datosDPI = await resDPI.json();
+    if (!resDPI.ok) {
+      setError('Error al subir el archivo PDF del DPI');
+      setCargando(false);
+      return;
+    }
+    const urlDPI = datosDPI.url;
+
+    // 3. Registramos al paciente
     try {
       const respuesta = await fetch("http://127.0.0.1:8000/pacientes/registro", {
         method: "POST",
@@ -149,6 +187,34 @@ export const RegisterPatient = () => {
                   </div>
                   <div className="flex-1">
                     {Input2("file", "txtFotografiaP", "Fotografía", <FaPhotoVideo className="text-gray-700 text-xl" />)}
+                  </div>
+                </div>
+
+                {/* DPI en PDF */}
+                <div className="flex flex-col lg:flex-row gap-x-5">
+                  <div className="flex-1">
+                    {Input2(
+                      "file",
+                      "txtCvPdf",
+                      "DPI en PDF",
+                      <MdTextSnippet className="text-gray-700 text-xl" />,
+                      null,
+                      {
+                        accept: ".pdf,application/pdf",
+                        onChange: (e) => {
+                          const file = e.target.files[0];
+                          if (file && file.size > 2 * 1024 * 1024) {
+                            setError('El PDF del DPI no debe superar los 2MB');
+                            e.target.value = '';
+                          } else {
+                            setError(null);
+                          }
+                        }
+                      }
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      Solo archivos PDF · Peso máximo: 2MB
+                    </p>
                   </div>
                 </div>
 
