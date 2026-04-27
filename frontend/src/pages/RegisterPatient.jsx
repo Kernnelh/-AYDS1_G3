@@ -29,8 +29,8 @@ export const RegisterPatient = () => {
 
     const form = e.target;
 
-    // 1. Si hay foto, primero la subimos
-    let urlFoto = null;
+    // Si no hay foto, asigna imagen por defecto
+    let urlFoto = 'https://via.placeholder.com/150x150?text=Paciente';
     const archivoFoto = form.txtFotografiaP.files[0];
 
     if (archivoFoto) {
