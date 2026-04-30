@@ -33,6 +33,18 @@ export const RegisterMedic = () => {
     let urlFoto = null;
     const archivoFoto = form.txtFotografiaM.files[0];
 
+    if (!archivoFoto) {
+      setError('La fotografía es obligatoria para el registro de médico');
+      setCargando(false);
+      return;
+    }
+
+    if (!archivoFoto.type.startsWith('image/')) {
+      setError('La fotografía debe ser una imagen válida');
+      setCargando(false);
+      return;
+    }
+
     if (archivoFoto) {
       const formDataFoto = new FormData();
       formDataFoto.append("file", archivoFoto);
@@ -188,6 +200,10 @@ export const RegisterMedic = () => {
                     {Input2("date", "txtNacimientoM", "Fecha de nacimiento", <MdCardGiftcard className="text-gray-700 text-xl" />)}
                   </div>
                   <div className="flex-1">
+                    <label className="block text-gray-700 font-semibold mb-1">
+                      Fotografía <span className="text-red-500">*</span>
+                      <span className="text-gray-400 font-normal ml-2 text-sm">(obligatoria)</span>
+                    </label>
                     {Input2("file", "txtFotografiaM", "Fotografía", <FaPhotoVideo className="text-gray-700 text-xl" />)}
                   </div>
                 </div>

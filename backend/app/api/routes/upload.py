@@ -34,3 +34,27 @@ async def subir_fotografia(file: UploadFile = File(...)):
         "url": url_foto,
         "nombre_archivo": nombre_unico
     }
+
+# Endpoint para subir un documento PDF
+@router.post("/documento")
+async def subir_documento(file: UploadFile = File(...)):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
+    
+    if file.size > 2 * 1024 * 1024:  # 2MB
+        raise HTTPException(status_code=400, detail="El archivo no debe superar 2MB")
+
+    extension = "pdf"
+    nombre_unico = f"{uuid.uuid4()}.{extension}"
+    ruta_completa = os.path.join(UPLOAD_DIR, nombre_unico)
+
+    with open(ruta_completa, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    url_documento = f"http://127.0.0.1:8000/static/fotos/{nombre_unico}"
+    
+    return {
+        "mensaje": "Documento subido exitosamente",
+        "url": url_documento,
+        "nombre_archivo": nombre_unico
+    }
