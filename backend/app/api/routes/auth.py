@@ -35,7 +35,8 @@ def iniciar_sesion(credenciales: LoginRequest, db: Session = Depends(get_db)):
         # B. Verificación de Token para primer inicio
         if not paciente.correo_verificado:
             if not credenciales.token_verificacion:
-                raise HTTPException(status_code=403, detail="Primer inicio de sesión requiere el token de verificación enviado a su correo.")
+                # CAMBIO CLAVE: Devolvemos 200 OK y la bandera primer_ingreso
+                return {"mensaje": "Requiere token", "primer_ingreso": True}
             
             if credenciales.token_verificacion != paciente.token_verificacion:
                 raise HTTPException(status_code=401, detail="Token de verificación incorrecto.")
@@ -58,7 +59,8 @@ def iniciar_sesion(credenciales: LoginRequest, db: Session = Depends(get_db)):
         # B. Verificación de Token para primer inicio
         if not medico.correo_verificado:
             if not credenciales.token_verificacion:
-                raise HTTPException(status_code=403, detail="Primer inicio de sesión requiere el token de verificación enviado a su correo.")
+                # CAMBIO CLAVE: Devolvemos 200 OK y la bandera primer_ingreso
+                return {"mensaje": "Requiere token", "primer_ingreso": True}
             
             if credenciales.token_verificacion != medico.token_verificacion:
                 raise HTTPException(status_code=401, detail="Token de verificación incorrecto.")
