@@ -61,3 +61,49 @@ def enviar_correo_cancelacion(destinatario: str, nombre_paciente: str, fecha: st
         print(f"✅ Correo de cancelación enviado exitosamente a {destinatario}")
     except Exception as e:
         print(f"❌ Error al conectar con el servidor SMTP: {e}")
+
+def enviar_correo_verificacion(destinatario: str, nombre_usuario: str, token: str):
+    """Envía el correo con el token de verificación para el primer inicio de sesión"""
+    
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        print("❌ Error: Credenciales SMTP no configuradas.")
+        return
+
+    asunto = "Bienvenido a SaludPlus - Tu Token de Verificación"
+    
+    cuerpo_html = f"""
+    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px; text-align: center;">
+        <h1 style="color: #0056b3;">🏥 SaludPlus</h1>
+        <h2 style="color: #4CAF50;">¡Hola, {nombre_usuario}! Bienvenido a nuestra plataforma.</h2>
+        <p>Tu registro se ha completado con éxito. Para proteger tu cuenta, necesitamos verificar tu correo electrónico.</p>
+        
+        <div style="background-color: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 16px;">Tu token de verificación es:</p>
+            <h2 style="letter-spacing: 5px; color: #333; margin: 10px 0;">{token}</h2>
+        </div>
+        
+        <p style="text-align: left;"><b>Instrucciones:</b></p>
+        <ul style="text-align: left;">
+            <li>Espera a que un Administrador apruebe tu cuenta.</li>
+            <li>En tu primer inicio de sesión, ingresa tu correo, contraseña y este token.</li>
+        </ul>
+        <br>
+        <p>Atentamente,<br><b>El equipo de SaludPlus</b></p>
+    </div>
+    """
+
+    msg = MIMEMultipart()
+    msg['From'] = f"SaludPlus <{SENDER_EMAIL}>"
+    msg['To'] = destinatario
+    msg['Subject'] = asunto
+    msg.attach(MIMEText(cuerpo_html, 'html'))
+
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        print(f"✅ Correo de verificación enviado a {destinatario}")
+    except Exception as e:
+        print(f"❌ Error al conectar con SMTP: {e}")
