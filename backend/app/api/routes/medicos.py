@@ -12,6 +12,7 @@ from app.models.medico import HorarioMedico, DiaAtencion
 from app.models.cita import Cita, EstadoCitaEnum
 from app.models.paciente import Paciente
 from app.models.tratamiento import Tratamiento, MedicamentoRecetado
+from app.schemas.tratamiento import TratamientoCreate
 from pydantic import BaseModel
 from app.core.email import enviar_correo_cancelacion, enviar_correo_verificacion
 import os
@@ -444,3 +445,50 @@ def actualizar_perfil_medico(
         "horario_fin": horario.hora_fin.strftime("%H:%M") if horario else None,
         "dias_atencion": [d.dia_semana for d in dias]
     }
+
+
+@router.post("/tratamiento", status_code=status.HTTP_201_CREATED)
+def registrar_tratamiento(datos: TratamientoCreate, db: Session = Depends(get_db)):
+    # 1. Validar que la cita exista
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="La cita especificada no existe")
+        
+    # Opcional: Validar que la cita no esté ya finalizada o cancelada
+    if cita.estado == EstadoCitaEnum.Atendida:
+        raise HTTPException(status_code=400, detail="Esta cita ya tiene un tratamiento registrado")
+
+    try:
+        # 2. Crear el encabezado del Tratamiento
+        nuevo_tratamiento = Tratamiento(
+            id_cita=datos.id_cita,
+            diagnostico=datos.diagnostico
+        )
+        db.add(nuevo_tratamiento)
+        db.flush() # Guardamos temporalmente para obtener el id_tratamiento generado sin hacer commit final
+        
+        # 3. Iterar y registrar cada medicamento recetado
+        for med in datos.medicamentos:
+            nuevo_medicamento = MedicamentoRecetado(
+                id_tratamiento=nuevo_tratamiento.id_tratamiento,
+                nombre=med.nombre,
+                cantidad=med.cantidad,
+                tiempo_medicamento=med.tiempo_medicamento,
+                descripcion_dosis=med.descripcion_dosis
+            )
+            db.add(nuevo_medicamento)
+            
+        # 4. Actualizar el estado de la cita
+        cita.estado = EstadoCitaEnum.Atendida
+        
+        # 5. Confirmar todos los cambios en la base de datos de golpe
+        db.commit()
+        
+        return {
+            "mensaje": "Tratamiento registrado y cita finalizada exitosamente",
+            "id_tratamiento": nuevo_tratamiento.id_tratamiento
+        }
+        
+    except Exception as e:
+        db.rollback() # Si algo falla (ej. error de base de datos), se deshace todo
+        raise HTTPException(status_code=500, detail=f"Error interno al registrar el tratamiento: {str(e)}")
