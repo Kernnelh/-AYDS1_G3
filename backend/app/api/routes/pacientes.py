@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from app.core.email import enviar_correo_verificacion
+from app.models.tratamiento import MedicamentoRecetado, Tratamiento
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 import os
 import secrets
 import shutil
 from datetime import date
+from fastapi.responses import StreamingResponse
 
+from app.core.pdf import generar_pdf_receta
 from app.core.security import verificar_token
 from app.models.cita import Cita, EstadoCitaEnum
 from app.models.medico import Medico
@@ -192,3 +195,29 @@ def actualizar_perfil(
     db.commit()
     db.refresh(paciente)
     return paciente
+
+
+@router.get("/tratamiento/{id_tratamiento}/receta")
+def descargar_receta(id_tratamiento: int, db: Session = Depends(get_db)):
+    # 1. Buscar el tratamiento
+    tratamiento = db.query(Tratamiento).filter(Tratamiento.id_tratamiento == id_tratamiento).first()
+    if not tratamiento:
+        raise HTTPException(status_code=404, detail="Tratamiento no encontrado")
+    
+    # 2. Buscar todas sus medicinas
+    medicamentos = db.query(MedicamentoRecetado).filter(MedicamentoRecetado.id_tratamiento == id_tratamiento).all()
+    
+    # 3. Buscar la cita, el paciente y el médico para tener sus datos
+    cita = db.query(Cita).filter(Cita.id_cita == tratamiento.id_cita).first()
+    paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+    medico = db.query(Medico).filter(Medico.id_medico == cita.id_medico).first()
+
+    # 4. Generar el PDF en memoria
+    pdf_buffer = generar_pdf_receta(tratamiento, medicamentos, paciente, medico)
+    
+    # 5. Enviar el archivo al navegador
+    headers = {
+        'Content-Disposition': f'inline; filename="Receta_{paciente.nombre}.pdf"'
+    }
+    
+    return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
