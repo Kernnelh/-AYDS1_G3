@@ -21,105 +21,55 @@ export const RegisterMedic = () => {
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setMensaje("");
     setCargando(true);
 
     const form = e.target;
-
-    // 1. Si hay foto, primero la subimos
-    let urlFoto = null;
     const archivoFoto = form.txtFotografiaM.files[0];
-
-    if (!archivoFoto) {
-      setError('La fotografía es obligatoria para el registro de médico');
-      setCargando(false);
-      return;
-    }
-
-    if (!archivoFoto.type.startsWith('image/')) {
-      setError('La fotografía debe ser una imagen válida');
-      setCargando(false);
-      return;
-    }
-
-    if (archivoFoto) {
-      const formDataFoto = new FormData();
-      formDataFoto.append("file", archivoFoto);
-
-      const resFoto = await fetch("http://127.0.0.1:8000/api/upload/fotografia", {
-        method: "POST",
-        body: formDataFoto,
-      });
-
-      const datosFoto = await resFoto.json();
-      if (!resFoto.ok) {
-        setError("Error al subir la fotografía");
-        setCargando(false);
-        return;
-      }
-      urlFoto = datosFoto.url;
-    }
-
-    // 2. Subimos el CV (obligatorio)
     const archivoCV = form.txtCvPdf.files[0];
 
-    if (!archivoCV) {
-      setError('Debes subir tu Curriculum Vitae en PDF');
+    // Validaciones del Frontend
+    if (!archivoFoto || !archivoFoto.type.startsWith('image/')) {
+      setError('La fotografía es obligatoria y debe ser una imagen');
       setCargando(false);
       return;
     }
-
-    if (archivoCV.type !== 'application/pdf') {
-      setError('El Curriculum Vitae debe ser un PDF');
+    if (!archivoCV || archivoCV.type !== 'application/pdf') {
+      setError('El Curriculum Vitae es obligatorio y debe ser PDF');
       setCargando(false);
       return;
     }
-
     if (archivoCV.size > 2 * 1024 * 1024) {
       setError('El PDF del Curriculum Vitae no debe superar los 2MB');
       setCargando(false);
       return;
     }
 
-    const formDataCV = new FormData();
-    formDataCV.append('file', archivoCV);
+    // Empaquetamos TODOS los datos en un FormData para el backend
+    const formData = new FormData();
+    formData.append("nombre", form.txtNombreM.value);
+    formData.append("apellido", form.txtApellidoM.value);
+    formData.append("dpi", form.txtDPIM.value);
+    formData.append("genero", form.txtGeneroM.value);
+    formData.append("direccion", form.txtDireccionM.value);
+    formData.append("telefono", form.txtTelefonoM.value);
+    formData.append("fecha_nacimiento", form.txtNacimientoM.value);
+    formData.append("no_colegiado", form.txtColegiadoM.value);
+    formData.append("especialidad", form.txtEspecialidadM.value);
+    formData.append("direccion_clinica", form.txtDireccionClinicaM.value);
+    formData.append("correo", form.txtCorreoM.value);
+    formData.append("contrasena", form.txtPasswordM.value);
+    formData.append("fotografia", archivoFoto);
+    formData.append("archivo_cv", archivoCV); // Coincide con el backend
 
-    const resCV = await fetch('http://127.0.0.1:8000/api/upload/documento', {
-      method: 'POST',
-      body: formDataCV,
-    });
-
-    const datosCV = await resCV.json();
-    if (!resCV.ok) {
-      setError('Error al subir el Curriculum Vitae');
-      setCargando(false);
-      return;
-    }
-    const urlCV = datosCV.url;
-
-    // 3. Registramos al médico
     try {
+      // Nota: NO se debe enviar "Content-Type: application/json"
       const respuesta = await fetch("http://127.0.0.1:8000/api/medicos/registro", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: form.txtNombreM.value,
-          apellido: form.txtApellidoM.value,
-          dpi: form.txtDPIM.value,
-          genero: form.txtGeneroM.value,
-          direccion: form.txtDireccionM.value,
-          telefono: form.txtTelefonoM.value,
-          fecha_nacimiento: form.txtNacimientoM.value,
-          fotografia: urlFoto || "",
-          no_colegiado: form.txtColegiadoM.value,
-          especialidad: form.txtEspecialidadM.value,
-          direccion_clinica: form.txtDireccionClinicaM.value,
-          correo: form.txtCorreoM.value,
-          contrasena: form.txtPasswordM.value,
-        }),
+        body: formData,
       });
 
       const datos = await respuesta.json();
