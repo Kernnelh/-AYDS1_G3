@@ -1,6 +1,6 @@
-# 🗄️ Base de Datos – salud_plus (Fase 2)
+#  Base de Datos – salud_plus (Fase 2)
 
-## 📌 Modelo Entidad-Relación (Modelo Físico)
+##  Modelo Entidad-Relación (Modelo Físico)
 
 ![Modelo ER](./AYD1_P1S12026.png)
 
@@ -10,7 +10,7 @@
 
 ---
 
-# 📖 Descripción General
+#  Descripción General
 
 La base de datos de **salud_plus** está diseñada para soportar:
 
@@ -30,9 +30,9 @@ El motor de base de datos utilizado es:
 
 ---
 
-# 🧱 Estructura de Tablas
+#  Estructura de Tablas
 
-## 🛡️ Administrador
+##  Administrador
 Almacena las credenciales de los administradores del sistema, incluyendo su autenticación de dos pasos.
 
 | Campo | Tipo | Descripción |
@@ -44,7 +44,7 @@ Almacena las credenciales de los administradores del sistema, incluyendo su aute
 
 ---
 
-## 👤 Paciente
+##  Paciente
 Almacena la información personal y de acceso de los pacientes, incluyendo sus documentos de validación.
 
 | Campo | Tipo | Descripción |
@@ -68,7 +68,7 @@ Almacena la información personal y de acceso de los pacientes, incluyendo sus d
 
 ---
 
-## 🩺 Medico
+##  Medico
 Almacena los datos personales, profesionales y documentos de validación de los médicos de la plataforma.
 
 | Campo | Tipo | Descripción |
@@ -95,7 +95,7 @@ Almacena los datos personales, profesionales y documentos de validación de los 
 
 ---
 
-## 🕒 Horario_Medico
+##  Horario_Medico
 Define el rango de horas general en el que atiende un médico.
 
 | Campo | Tipo | Descripción |
@@ -107,7 +107,7 @@ Define el rango de horas general en el que atiende un médico.
 
 ---
 
-## 📅 Dia_Atencion
+##  Dia_Atencion
 Registra los días específicos de la semana en los que el médico ofrece consultas.
 
 | Campo | Tipo | Descripción |
@@ -120,7 +120,7 @@ Registra los días específicos de la semana en los que el médico ofrece consul
 
 ---
 
-## 🏥 Cita
+##  Cita
 Almacena el registro transaccional de las consultas médicas, enlazando al paciente con el médico.
 
 | Campo | Tipo | Descripción |
@@ -137,7 +137,7 @@ Almacena el registro transaccional de las consultas médicas, enlazando al pacie
 
 ---
 
-## 📋 Tratamiento
+##  Tratamiento
 Registra el diagnóstico emitido por el médico tras atender una cita.
 
 | Campo | Tipo | Descripción |
@@ -149,7 +149,7 @@ Registra el diagnóstico emitido por el médico tras atender una cita.
 
 ---
 
-## 💊 Medicamento_Recetado
+##  Medicamento_Recetado
 Contiene el detalle individual de cada medicina asignada a un tratamiento específico.
 
 | Campo | Tipo | Descripción |
@@ -163,7 +163,7 @@ Contiene el detalle individual de cada medicina asignada a un tratamiento espec�
 
 ---
 
-## ⭐ Calificacion
+##  Calificacion
 Permite almacenar el feedback (estrellas y comentarios) que los pacientes y médicos se otorgan mutuamente tras una cita.
 
 | Campo | Tipo | Descripción |
@@ -177,7 +177,7 @@ Permite almacenar el feedback (estrellas y comentarios) que los pacientes y méd
 
 ---
 
-## 🚩 Reporte
+##  Reporte
 Almacena las denuncias emitidas por faltas, negligencias o conductas inapropiadas durante una cita médica.
 
 | Campo | Tipo | Descripción |
@@ -231,7 +231,7 @@ Almacena las denuncias emitidas por faltas, negligencias o conductas inapropiada
 
 ---
 
-# 🚀 Cómo levantar la base de datos
+#  Cómo levantar la base de datos
 
 ## 🔹 Opción 1 – Usando MySQL desde consola
 
@@ -282,7 +282,7 @@ docker exec -i saludplus-mysql mysql -u root -proot salud_plus < data.sql
 ```
 
 # Ejecutar motor de MYSQL (server)
-# ⚠️ Recomendaciones para el Development Team
+#  Recomendaciones para el Development Team
 
 - Usar MySQL 8.x para evitar problemas de compatibilidad con ciertas sintaxis.
 - No modificar el schema.sql directamente en producción o local sin antes avisar al equipo en la Daily Scrum.
