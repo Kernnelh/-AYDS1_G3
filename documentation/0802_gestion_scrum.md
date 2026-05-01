@@ -57,13 +57,17 @@ Durante nuestra reunión de planificación, el equipo analizó las Historias de 
 ### 2. Daily Scrums
 * *Enlace a la grabación de las Daily 1:* [https://drive.google.com/file/d/1InYH_wHijR7CzqfAce_fd8-zbP6oBTI8/view?usp=sharing]
 * *Enlace a la grabación de las Daily 2:* [https://drive.google.com/file/d/1a-qYnLAQoa4hNt5-TOxSLyf88jkAx83I/view?usp=sharing]
+* *Enlace a la grabación de las Daily 3:* [https://drive.google.com/file/d/1vYtd8uZ3dm0FBpmvNQtl-Vzy_NQXv7Aw/view?usp=sharing]
+* *Enlace a la grabación de las Daily 4:* [https://drive.google.com/file/d/11QV8L6kB2wVqPxoI5W0Bem0toLX3VWru/view?usp=sharing]
+* *Enlace a la grabación de las Daily 5:* [https://drive.google.com/file/d/1hdGrmDqqfCVdIWcjnvDJvg1U_5NBxavH/view?usp=sharing]
+* *Enlace a la grabación de las Daily 6:* [https://drive.google.com/file/d/1WpFfxDkVsOYzTlapb147xQY87_gJXJy7/view?usp=sharing]
 
 
 ---
 
 ### 3. Sprint Restrospective
 Durante el proceso de Sprint Restrospective todos los miembros del equipo comunicamos las impresiones, cosas mal hechas y a mejorar en el siguiente proyecto.
-* *Enlace a la grabación del Retrospective:* []
+* *Enlace a la grabación del Retrospective:* [https://drive.google.com/file/d/1KLHM-txkmIYgAPIMp2H9Z8kf2DwwKBrG/view?usp=sharing]
 
 
 ## Tablero Kanban y Flujo de Trabajo
@@ -86,17 +90,17 @@ A continuación se presenta la evidencia visual del movimiento de los tickets a 
 
 **1. Inicio del Sprint 1**
 *El tablero con todas las tareas priorizadas en la columna TO-DO tras el Sprint Planning.*
-*(Fecha: 01-03-2026)*
+
 ![Inicio del Sprint 1](./img/INICIOKAMBAN2.png)
 
 **2. Durante el Desarrollo del Sprint 1**
 *Evidencia del trabajo en progreso, tareas en validación (QA) y posibles bloqueos enfrentados por el equipo.*
-*(Fecha: 06-03-2026)*
+
 ![Durante el Sprint 1](./img/MEDIADOSKAMBAN2.png)
 
 **3. Fin del Sprint 1**
 *El tablero al cierre del sprint, evidenciando las tareas completadas en la columna DEPLOY.*
-*(Fecha: 09/03/2026)*
+
 ![Fin del Sprint 1](./img/FINALKANVAN2.png)
 
 ---
