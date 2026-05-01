@@ -30,7 +30,7 @@ def iniciar_sesion(credenciales: LoginRequest, db: Session = Depends(get_db)):
     if paciente and pwd_context.verify(credenciales.contrasena, paciente.contrasena):
         # A. Verificación de estado de cuenta
         if paciente.estado in [EstadoPaciente.Pendiente, EstadoPaciente.Rechazado, EstadoPaciente.Desactivado]:
-            raise HTTPException(status_code=403, detail=f"Su cuenta no está activa. Estado actual: {paciente.estado}")
+            raise HTTPException(status_code=403, detail=f"Su cuenta no está activa. Estado actual: PENDIENTE, RECHAZADO o DESACTIVADO")
         
         # B. Verificación de Token para primer inicio
         if not paciente.correo_verificado:
@@ -79,5 +79,5 @@ def iniciar_sesion(credenciales: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/generar-clave", tags=["Test"])
 def generar_clave():
     """Genera un hash nativo compatible con este backend"""
-    hash_real = pwd_context.hash("ingrese_contraseña")
+    hash_real = pwd_context.hash("secreto_2026")
     return {"hash_generado": hash_real}
