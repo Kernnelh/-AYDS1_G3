@@ -11,6 +11,8 @@ from sqlalchemy import text, func, desc
 from app.db.database import get_db
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
+from app.models.reporte import Reporte
+from app.models.calificacion import Calificacion
 from app.schemas.admin import ActualizarEstado
 from app.core.security import verificar_token
 import os

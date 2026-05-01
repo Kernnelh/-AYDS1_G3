@@ -1,7 +1,6 @@
 import enum
-from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, func, Time, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, DateTime, Enum, func, Time, ForeignKey, Boolean
 from app.db.database import Base
-
 
 class GeneroEnum(str, enum.Enum):
     Masculino = "Masculino"
@@ -11,6 +10,7 @@ class EstadoUsuarioEnum(str, enum.Enum):
     Pendiente = "Pendiente"
     Aprobado = "Aprobado"
     Rechazado = "Rechazado"
+    Desactivado = "Desactivado" # Nuevo estado agregado
 
 class Medico(Base):
     __tablename__ = "Medico"
@@ -23,16 +23,17 @@ class Medico(Base):
     genero = Column(Enum(GeneroEnum), nullable=False)
     direccion = Column(String(255), nullable=False)
     telefono = Column(String(15), nullable=False)
-    # A diferencia del paciente, en el diagrama del médico la foto sí es Not Null (NN)
     fotografia = Column(String(255), nullable=False) 
+    archivo_cv = Column(String(255), nullable=False) # Nueva columna CV
     no_colegiado = Column(String(20), nullable=False, unique=True)
     especialidad = Column(String(100), nullable=False)
     direccion_clinica = Column(String(255), nullable=False)
     correo = Column(String(150), nullable=False, unique=True)
     contrasena = Column(String(255), nullable=False)
+    token_verificacion = Column(String(255), nullable=True) # Nueva columna token
+    correo_verificado = Column(Boolean, default=False) # Nueva columna verificación
     estado = Column(Enum(EstadoUsuarioEnum), default=EstadoUsuarioEnum.Pendiente)
     fecha_registro = Column(DateTime, default=func.now())
-
 
 class HorarioMedico(Base):
     __tablename__ = "horario_medico"
