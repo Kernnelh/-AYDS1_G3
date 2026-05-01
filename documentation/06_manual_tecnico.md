@@ -3,12 +3,11 @@
 Este documento detalla la arquitectura, el modelo de datos y las instrucciones precisas para configurar, levantar y desplegar los tres módulos principales del proyecto **SaludPlus**: Base de Datos, Backend y Frontend.
 
 ---
+#  Base de Datos – salud_plus (Fase 2)
 
-# 🗄️ Base de Datos – salud_plus (Fase 2)
+##  Modelo Entidad-Relación (Modelo Físico)
 
-## 📌 Modelo Entidad-Relación (Modelo Físico)
-
-![Modelo ER](./AYD1_P1S12026.png)
+![Modelo ER](./img/AYD1_P1S12026.png)
 
 > El modelo representa la estructura física de la base de datos utilizada en el proyecto **salud_plus** para la gestión de citas médicas.
 
@@ -16,7 +15,7 @@ Este documento detalla la arquitectura, el modelo de datos y las instrucciones p
 
 ---
 
-# 📖 Descripción General
+#  Descripción General
 
 La base de datos de **salud_plus** está diseñada para soportar:
 
@@ -36,9 +35,9 @@ El motor de base de datos utilizado es:
 
 ---
 
-# 🧱 Estructura de Tablas
+#  Estructura de Tablas
 
-## 🛡️ Administrador
+##  Administrador
 Almacena las credenciales de los administradores del sistema, incluyendo su autenticación de dos pasos.
 
 | Campo | Tipo | Descripción |
@@ -50,7 +49,7 @@ Almacena las credenciales de los administradores del sistema, incluyendo su aute
 
 ---
 
-## 👤 Paciente
+##  Paciente
 Almacena la información personal y de acceso de los pacientes, incluyendo sus documentos de validación.
 
 | Campo | Tipo | Descripción |
@@ -74,7 +73,7 @@ Almacena la información personal y de acceso de los pacientes, incluyendo sus d
 
 ---
 
-## 🩺 Medico
+##  Medico
 Almacena los datos personales, profesionales y documentos de validación de los médicos de la plataforma.
 
 | Campo | Tipo | Descripción |
@@ -101,7 +100,7 @@ Almacena los datos personales, profesionales y documentos de validación de los 
 
 ---
 
-## 🕒 Horario_Medico
+##  Horario_Medico
 Define el rango de horas general en el que atiende un médico.
 
 | Campo | Tipo | Descripción |
@@ -113,7 +112,7 @@ Define el rango de horas general en el que atiende un médico.
 
 ---
 
-## 📅 Dia_Atencion
+##  Dia_Atencion
 Registra los días específicos de la semana en los que el médico ofrece consultas.
 
 | Campo | Tipo | Descripción |
@@ -126,7 +125,7 @@ Registra los días específicos de la semana en los que el médico ofrece consul
 
 ---
 
-## 🏥 Cita
+##  Cita
 Almacena el registro transaccional de las consultas médicas, enlazando al paciente con el médico.
 
 | Campo | Tipo | Descripción |
@@ -143,7 +142,7 @@ Almacena el registro transaccional de las consultas médicas, enlazando al pacie
 
 ---
 
-## 📋 Tratamiento
+##  Tratamiento
 Registra el diagnóstico emitido por el médico tras atender una cita.
 
 | Campo | Tipo | Descripción |
@@ -155,7 +154,7 @@ Registra el diagnóstico emitido por el médico tras atender una cita.
 
 ---
 
-## 💊 Medicamento_Recetado
+##  Medicamento_Recetado
 Contiene el detalle individual de cada medicina asignada a un tratamiento específico.
 
 | Campo | Tipo | Descripción |
@@ -169,7 +168,7 @@ Contiene el detalle individual de cada medicina asignada a un tratamiento espec�
 
 ---
 
-## ⭐ Calificacion
+##  Calificacion
 Permite almacenar el feedback (estrellas y comentarios) que los pacientes y médicos se otorgan mutuamente tras una cita.
 
 | Campo | Tipo | Descripción |
@@ -183,7 +182,7 @@ Permite almacenar el feedback (estrellas y comentarios) que los pacientes y méd
 
 ---
 
-## 🚩 Reporte
+##  Reporte
 Almacena las denuncias emitidas por faltas, negligencias o conductas inapropiadas durante una cita médica.
 
 | Campo | Tipo | Descripción |
@@ -237,7 +236,7 @@ Almacena las denuncias emitidas por faltas, negligencias o conductas inapropiada
 
 ---
 
-# 🚀 Cómo levantar la base de datos
+#  Cómo levantar la base de datos
 
 ## 🔹 Opción 1 – Usando MySQL desde consola
 
@@ -288,14 +287,34 @@ docker exec -i saludplus-mysql mysql -u root -proot salud_plus < data.sql
 ```
 
 # Ejecutar motor de MYSQL (server)
-# ⚠️ Recomendaciones para el Development Team
+#  Recomendaciones para el Development Team
 
 - Usar MySQL 8.x para evitar problemas de compatibilidad con ciertas sintaxis.
 - No modificar el schema.sql directamente en producción o local sin antes avisar al equipo en la Daily Scrum.
 - Si se agregan o quitan campos, el responsable debe actualizar el archivo SQL y la imagen del modelo ER (salud_plus_ER.png) en el repositorio.
-- Recordar que la contraseña simulada en el data.sql para todos los usuarios de prueba es: Password123!l para todos los usuarios de prueba es: Password123!
+- Recordar que la contraseña simulada en el data.sql para todos los usuarios de prueba es: Password123!
+---
+# Backend - Proyecto Análisis y Diseño 1 (AYD1)
 
---- 
+API REST construida con **FastAPI** y **Python** para la gestión de registros médicos, pacientes y un sistema de autenticación seguro utilizando JWT y encriptación SHA-256.
+
+## 🛠️ Tecnologías Utilizadas
+* **Framework:** FastAPI
+* **Lenguaje:** Python 3.10+
+* **Base de Datos:** MySQL
+* **ORM:** SQLAlchemy
+* **Autenticación:** JSON Web Tokens (JWT)
+* **Seguridad:** Passlib (SHA-256)
+
+---
+
+## ⚙️ Requisitos Previos
+Antes de levantar el proyecto, asegúrate de tener instalado:
+* Python 3.10 o superior.
+* Un servidor de MySQL corriendo localmente o en la nube.
+* Git y SourceTree (para el versionamiento).
+
+---
 
 # Backend - Proyecto Análisis y Diseño 1 (AYD1)
 
@@ -364,12 +383,20 @@ DB_PORT=3306
 DB_NAME=nombre_de_tu_base_de_datos
 ```
 
+Este proyecto utiliza notificaciones por correo electrónico en tiempo real. Para que el backend funcione correctamente, debes configurar las variables de entorno.
+
+```
+1. En la carpeta raíz del `backend`, crea un archivo llamado `.env`.
+2. Copia el contenido del archivo `.env.example` y pégalo en tu nuevo `.env`.
+3. Reemplaza los valores de `SENDER_EMAIL` y `SENDER_PASSWORD` con las credenciales de una cuenta de Gmail (usando una Contraseña de Aplicación).
+```
+
 ### 5. Ejecutar servidor local
 ```
 uvicorn app.main:app --reload
 ```
 
-# 📂 Estructura del Proyecto
+#  Estructura del Proyecto
 * app/api/: Controladores y rutas de los endpoints (Auth, Pacientes, Médicos, Admin).
 
 * app/core/: Configuraciones globales y lógica de seguridad (JWT, SHA-256).
@@ -382,14 +409,13 @@ uvicorn app.main:app --reload
 
 * app/services/: Lógica de negocio adicional.
 
-# 🌿 Flujo de Trabajo (Git Flow)
+#  Flujo de Trabajo (Git Flow)
 
 + Nunca trabajar directamente sobre main o develop.
 
 + Crear ramas para cada tarea utilizando el formato: feature/T-XXX-descripcion (ej. feature/T-001.02-registro-paciente).
 
 + Utilizar Conventional Commits para los mensajes (ej. feat(pacientes): ..., fix(auth): ...).
-
 --- 
 
 # Frontend - Guía de Instalación y Ejecución
