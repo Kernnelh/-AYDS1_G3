@@ -20,7 +20,7 @@ class Reporte(Base):
     id_reporte = Column(Integer, primary_key=True, index=True)
     id_cita = Column(Integer, ForeignKey("cita.id_cita"), nullable=False)
     autor = Column(Enum(AutorEnum), nullable=False)
-    categoria = Column(Enum(CategoriaReporteEnum), nullable=False)
+    categoria = Column(Enum(CategoriaReporteEnum, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
     explicacion = Column(Text, nullable=False)
     estado = Column(String(50), default="Pendiente_Revision")
     fecha_creacion = Column(DateTime, default=func.now())
