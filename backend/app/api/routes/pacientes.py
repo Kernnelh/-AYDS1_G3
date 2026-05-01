@@ -19,6 +19,7 @@ from app.models.paciente import Paciente, EstadoUsuarioEnum
 from app.schemas.paciente import PacienteCreate, PacienteUpdate
 from app.models.reporte import Reporte
 from app.models.calificacion import Calificacion
+from app.schemas.interacciones import CalificacionCreate, ReporteCreate
 
 router = APIRouter()
 # Configuramos Passlib para usar SHA-256
@@ -221,3 +222,52 @@ def descargar_receta(id_tratamiento: int, db: Session = Depends(get_db)):
     }
     
     return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
+
+
+@router.post("/calificar", status_code=status.HTTP_201_CREATED)
+def calificar_cita(datos: CalificacionCreate, db: Session = Depends(get_db)):
+    # 1. Verificar que la cita exista
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="La cita especificada no existe")
+        
+    # 2. Asegurar que la cita ya ocurrió
+    if cita.estado != EstadoCitaEnum.Atendida:
+        raise HTTPException(status_code=400, detail="Solo se pueden calificar citas que ya fueron Atendidas")
+
+    # 3. Verificar que no haya sido calificada antes (evitar spam)
+    calificacion_existente = db.query(Calificacion).filter(Calificacion.id_cita == datos.id_cita).first()
+    if calificacion_existente:
+         raise HTTPException(status_code=400, detail="Esta cita ya ha sido calificada anteriormente")
+
+    # 4. Guardar calificación
+    nueva_calificacion = Calificacion(
+        id_cita=datos.id_cita,
+        autor = "Paciente",  # Siempre será el paciente quien califique
+        estrellas =datos.estrellas,
+        comentario=datos.comentario
+    )
+    db.add(nueva_calificacion)
+    db.commit()
+    
+    return {"mensaje": "¡Gracias por tu retroalimentación! Calificación guardada exitosamente."}
+
+
+@router.post("/reportar", status_code=status.HTTP_201_CREATED)
+def reportar_incidente(datos: ReporteCreate, db: Session = Depends(get_db)):
+    # 1. Verificar cita
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada para reportar")
+
+    # 2. Crear el reporte con estado Pendiente para el Admin
+    nuevo_reporte = Reporte(
+        id_cita=datos.id_cita,
+        autor = "Paciente",  # Siempre será el paciente quien reporte
+        categoria=datos.categoria,
+        explicacion=datos.explicacion
+    )
+    db.add(nuevo_reporte)
+    db.commit()
+    
+    return {"mensaje": "Reporte enviado exitosamente. Un administrador revisará el caso a la brevedad."}
