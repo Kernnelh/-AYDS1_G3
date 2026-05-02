@@ -13,6 +13,9 @@ from app.models.cita import Cita, EstadoCitaEnum
 from app.models.paciente import Paciente
 from app.models.tratamiento import Tratamiento, MedicamentoRecetado
 from app.schemas.tratamiento import TratamientoCreate
+from app.schemas.interacciones import CalificacionCreate, ReporteCreate
+from app.models.calificacion import Calificacion
+from app.models.reporte import Reporte
 from pydantic import BaseModel
 from app.core.email import enviar_correo_cancelacion, enviar_correo_verificacion
 import os
@@ -351,19 +354,26 @@ def obtener_historial_citas_medico(
         ])
     ).all()
 
-    # Formateamos incluyendo el nombre del paciente según el PDF
+    # Formateamos incluyendo el nombre del paciente
     resultado = []
     for cita in citas:
         paciente = db.query(Paciente).filter(Paciente.id_paciente == cita.id_paciente).first()
+        # Buscamos si existe un tratamiento para esta cita
+        tratamiento_db = db.query(Tratamiento).filter(Tratamiento.id_cita == cita.id_cita).first()
         
         resultado.append({
             "id_cita": cita.id_cita,
+            "id_paciente": cita.id_paciente, # AGREGADO: Buena práctica para el frontend
             "fecha": cita.fecha,
             "hora": cita.hora,
             "estado": cita.estado,
             "motivo": cita.motivo,          
-            "tratamiento": cita.tratamiento, 
-            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido"
+            # EXTRAÍDO de la tabla Tratamiento, no de Cita
+            "tratamiento": tratamiento_db.diagnostico if tratamiento_db else "Sin tratamiento registrado", 
+            # AGREGADO: ID para que el frontend pueda ver el PDF
+            "id_tratamiento": tratamiento_db.id_tratamiento if tratamiento_db else None,
+            "paciente": f"{paciente.nombre} {paciente.apellido}" if paciente else "Paciente Desconocido",
+            "telefono_paciente": paciente.telefono if paciente else "No disponible" # EXTRA para el doc
         })
         
     return resultado
@@ -492,3 +502,58 @@ def registrar_tratamiento(datos: TratamientoCreate, db: Session = Depends(get_db
     except Exception as e:
         db.rollback() # Si algo falla (ej. error de base de datos), se deshace todo
         raise HTTPException(status_code=500, detail=f"Error interno al registrar el tratamiento: {str(e)}")
+    
+
+
+@router.post("/calificar", status_code=status.HTTP_201_CREATED, tags=["Médico"])
+def calificar_paciente(datos: CalificacionCreate, db: Session = Depends(get_db)):
+    # 1. Verificar que la cita exista
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="La cita especificada no existe")
+        
+    # 2. Asegurar que la cita ya ocurrió
+    if cita.estado != EstadoCitaEnum.Atendida:
+        raise HTTPException(status_code=400, detail="Solo se pueden calificar citas que ya fueron Atendidas")
+
+    # 3. Verificar que el médico no haya calificado esta cita antes (evitar spam)
+    # Buscamos por id_cita y autor="Medico" para no chocar con la calificación del paciente
+    calificacion_existente = db.query(Calificacion).filter(
+        Calificacion.id_cita == datos.id_cita,
+        Calificacion.autor == "Medico"
+    ).first()
+    
+    if calificacion_existente:
+         raise HTTPException(status_code=400, detail="Ya has calificado a este paciente por esta cita")
+
+    # 4. Guardar calificación
+    nueva_calificacion = Calificacion(
+        id_cita=datos.id_cita,
+        autor="Medico",            # <-- El autor cambia a Médico
+        estrellas=datos.estrellas,
+        comentario=datos.comentario
+    )
+    db.add(nueva_calificacion)
+    db.commit()
+    
+    return {"mensaje": "Calificación al paciente guardada exitosamente."}
+
+
+@router.post("/reportar", status_code=status.HTTP_201_CREATED, tags=["Médico"])
+def reportar_paciente(datos: ReporteCreate, db: Session = Depends(get_db)):
+    # 1. Verificar cita
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="Cita no encontrada para reportar")
+
+    # 2. Crear el reporte para el Admin
+    nuevo_reporte = Reporte(
+        id_cita=datos.id_cita,
+        autor="Medico",                # <-- El autor cambia a Médico
+        categoria=datos.categoria,     
+        explicacion=datos.explicacion  
+    )
+    db.add(nuevo_reporte)
+    db.commit()
+    
+    return {"mensaje": "Reporte enviado exitosamente. El administrador revisará el caso del paciente."}

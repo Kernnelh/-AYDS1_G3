@@ -6,7 +6,7 @@ import { Size } from "../styles/styles";
 const medicamentoVacio = () => ({
   nombre: '',
   cantidad: '',
-  tiempo: '',
+  tiempo_medicamento: '', // <-- Cambiamos 'tiempo' por 'tiempo_medicamento'
   descripcion_dosis: '',
 });
 
@@ -29,7 +29,7 @@ export const TreatmentForm = ({ appointment, paciente, onSave, onClose }) => {
         newErrors[`med_nombre_${idx}`] = 'Nombre requerido.';
       if (!med.cantidad.trim())
         newErrors[`med_cantidad_${idx}`] = 'Cantidad requerida.';
-      if (!med.tiempo.trim())
+      if (!med.tiempo_medicamento?.trim()) 
         newErrors[`med_tiempo_${idx}`] = 'Duración requerida.';
       if (!med.descripcion_dosis.trim())
         newErrors[`med_dosis_${idx}`] = 'Instrucciones requeridas.';
@@ -227,8 +227,8 @@ export const TreatmentForm = ({ appointment, paciente, onSave, onClose }) => {
                         </label>
                         <input
                           type="text"
-                          value={med.tiempo}
-                          onChange={(e) => handleMedChange(idx, 'tiempo', e.target.value)}
+                          value={med.tiempo_medicamento} // <-- CAMBIO AQUÍ
+                          onChange={(e) => handleMedChange(idx, 'tiempo_medicamento', e.target.value)} // <-- CAMBIO AQUÍ
                           placeholder="Ej: 7 días, 15 días, 1 mes..."
                           className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 text-sm ${
                             errors[`med_tiempo_${idx}`]
