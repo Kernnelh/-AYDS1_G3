@@ -1,5 +1,6 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.core.security import verificar_token
@@ -10,8 +11,13 @@ from app.schemas.medico import HorarioCrear
 from app.models.medico import HorarioMedico, DiaAtencion
 from app.models.cita import Cita, EstadoCitaEnum
 from app.models.paciente import Paciente
+from app.models.tratamiento import Tratamiento, MedicamentoRecetado
+from app.schemas.tratamiento import TratamientoCreate
 from pydantic import BaseModel
-from app.core.email import enviar_correo_cancelacion
+from app.core.email import enviar_correo_cancelacion, enviar_correo_verificacion
+import os
+import secrets
+import shutil
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -23,13 +29,42 @@ class TratamientoUpdate(BaseModel):
 class CancelacionMedico(BaseModel):
     motivo_cancelacion: str
 
+UPLOAD_DIR_MEDICOS = "static/uploads/medicos"
+os.makedirs(UPLOAD_DIR_MEDICOS, exist_ok=True)    
+
 @router.post("/registro", status_code=status.HTTP_201_CREATED)
-def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
-    # 1. Verificar que el correo, DPI o No. Colegiado no existan ya en la base de datos
+async def registrar_medico(
+    background_tasks: BackgroundTasks,
+    nombre: str = Form(...),
+    apellido: str = Form(...),
+    dpi: str = Form(...),
+    fecha_nacimiento: date = Form(...),
+    genero: str = Form(...),
+    direccion: str = Form(...),
+    telefono: str = Form(...),
+    no_colegiado: str = Form(...),
+    especialidad: str = Form(...),
+    direccion_clinica: str = Form(...),
+    correo: str = Form(...),
+    contrasena: str = Form(...),
+    fotografia: UploadFile = File(...),  # Archivo físico obligatorio
+    archivo_cv: UploadFile = File(...),  # Archivo físico obligatorio (CV en lugar de DPI)
+    db: Session = Depends(get_db)
+):
+    # 1. Validar extensiones de los archivos
+    ext_foto = os.path.splitext(fotografia.filename)[1].lower()
+    if ext_foto not in ['.jpg', '.jpeg', '.png']:
+        raise HTTPException(status_code=400, detail="La fotografía debe ser JPG o PNG")
+    
+    ext_cv = os.path.splitext(archivo_cv.filename)[1].lower()
+    if ext_cv != '.pdf':
+        raise HTTPException(status_code=400, detail="El documento CV debe ser un archivo PDF")
+
+    # 2. Verificar que el correo, DPI o No. Colegiado no existan ya en la base de datos
     usuario_existente = db.query(Medico).filter(
-        (Medico.correo == medico.correo) | 
-        (Medico.dpi == medico.dpi) |
-        (Medico.no_colegiado == medico.no_colegiado)
+        (Medico.correo == correo) | 
+        (Medico.dpi == dpi) |
+        (Medico.no_colegiado == no_colegiado)
     ).first()
     
     if usuario_existente:
@@ -38,34 +73,54 @@ def registrar_medico(medico: MedicoCreate, db: Session = Depends(get_db)):
             detail="El correo, DPI o Número de Colegiado ya están registrados"
         )
 
-    # 2. Encriptar la contraseña
-    contrasena_hasheada = pwd_context.hash(medico.contrasena)
+    # 3. Guardar los archivos físicos en el servidor
+    nombre_foto = f"foto_med_{dpi}_{secrets.token_hex(4)}{ext_foto}"
+    ruta_foto = f"{UPLOAD_DIR_MEDICOS}/{nombre_foto}"
+    
+    nombre_pdf_cv = f"cv_{dpi}_{secrets.token_hex(4)}{ext_cv}"
+    ruta_pdf_cv = f"{UPLOAD_DIR_MEDICOS}/{nombre_pdf_cv}"
 
-    # 3. Crear el modelo de base de datos
+    with open(ruta_foto, "wb") as buffer:
+        shutil.copyfileobj(fotografia.file, buffer)
+        
+    with open(ruta_pdf_cv, "wb") as buffer:
+        shutil.copyfileobj(archivo_cv.file, buffer)
+
+    # 4. Encriptar la contraseña y generar Token de Verificación
+    contrasena_hasheada = pwd_context.hash(contrasena)
+    token_generado = secrets.token_hex(3)
+
+    # 5. Crear el modelo de base de datos
     nuevo_medico = Medico(
-        nombre=medico.nombre,
-        apellido=medico.apellido,
-        dpi=medico.dpi,
-        fecha_nacimiento=medico.fecha_nacimiento,
-        genero=medico.genero,
-        direccion=medico.direccion,
-        telefono=medico.telefono,
-        fotografia=medico.fotografia,
-        no_colegiado=medico.no_colegiado,
-        especialidad=medico.especialidad,
-        direccion_clinica=medico.direccion_clinica,
-        correo=medico.correo,
+        nombre=nombre,
+        apellido=apellido,
+        dpi=dpi,
+        fecha_nacimiento=fecha_nacimiento,
+        genero=genero,
+        direccion=direccion,
+        telefono=telefono,
+        fotografia=ruta_foto,       # Guardamos la RUTA de la foto
+        archivo_cv=ruta_pdf_cv,     # Guardamos la RUTA del CV
+        no_colegiado=no_colegiado,
+        especialidad=especialidad,
+        direccion_clinica=direccion_clinica,
+        correo=correo,
         contrasena=contrasena_hasheada,
-        estado=EstadoUsuarioEnum.Pendiente  # Los médicos también inician pendientes
+        token_verificacion=token_generado, # Se guarda el token generado
+        correo_verificado=False,
+        estado=EstadoUsuarioEnum.Pendiente
     )
 
-    # 4. Guardar en la base de datos
+    # 6. Guardar en la base de datos
     db.add(nuevo_medico)
     db.commit()
     db.refresh(nuevo_medico)
 
+    # 7. --- LÓGICA SMTP PARA DESPUÉS ---
+    background_tasks.add_task(enviar_correo_verificacion, correo, nombre, token_generado)
+
     return {
-        "mensaje": "Médico registrado exitosamente", 
+        "mensaje": "Médico registrado exitosamente. Por favor, revisa tu correo para el token de verificación.", 
         "id_medico": nuevo_medico.id_medico
     }
 
@@ -390,3 +445,50 @@ def actualizar_perfil_medico(
         "horario_fin": horario.hora_fin.strftime("%H:%M") if horario else None,
         "dias_atencion": [d.dia_semana for d in dias]
     }
+
+
+@router.post("/tratamiento", status_code=status.HTTP_201_CREATED)
+def registrar_tratamiento(datos: TratamientoCreate, db: Session = Depends(get_db)):
+    # 1. Validar que la cita exista
+    cita = db.query(Cita).filter(Cita.id_cita == datos.id_cita).first()
+    if not cita:
+        raise HTTPException(status_code=404, detail="La cita especificada no existe")
+        
+    # Opcional: Validar que la cita no esté ya finalizada o cancelada
+    if cita.estado == EstadoCitaEnum.Atendida:
+        raise HTTPException(status_code=400, detail="Esta cita ya tiene un tratamiento registrado")
+
+    try:
+        # 2. Crear el encabezado del Tratamiento
+        nuevo_tratamiento = Tratamiento(
+            id_cita=datos.id_cita,
+            diagnostico=datos.diagnostico
+        )
+        db.add(nuevo_tratamiento)
+        db.flush() # Guardamos temporalmente para obtener el id_tratamiento generado sin hacer commit final
+        
+        # 3. Iterar y registrar cada medicamento recetado
+        for med in datos.medicamentos:
+            nuevo_medicamento = MedicamentoRecetado(
+                id_tratamiento=nuevo_tratamiento.id_tratamiento,
+                nombre=med.nombre,
+                cantidad=med.cantidad,
+                tiempo_medicamento=med.tiempo_medicamento,
+                descripcion_dosis=med.descripcion_dosis
+            )
+            db.add(nuevo_medicamento)
+            
+        # 4. Actualizar el estado de la cita
+        cita.estado = EstadoCitaEnum.Atendida
+        
+        # 5. Confirmar todos los cambios en la base de datos de golpe
+        db.commit()
+        
+        return {
+            "mensaje": "Tratamiento registrado y cita finalizada exitosamente",
+            "id_tratamiento": nuevo_tratamiento.id_tratamiento
+        }
+        
+    except Exception as e:
+        db.rollback() # Si algo falla (ej. error de base de datos), se deshace todo
+        raise HTTPException(status_code=500, detail=f"Error interno al registrar el tratamiento: {str(e)}")

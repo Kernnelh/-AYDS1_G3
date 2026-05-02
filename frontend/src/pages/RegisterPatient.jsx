@@ -21,91 +21,51 @@ export const RegisterPatient = () => {
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setMensaje("");
     setCargando(true);
 
     const form = e.target;
-
-    // Si no hay foto, asigna imagen por defecto
-    let urlFoto = 'https://via.placeholder.com/150x150?text=Paciente';
     const archivoFoto = form.txtFotografiaP.files[0];
+    const archivoDPI = form.txtCvPdf.files[0]; // En tu front el input del DPI se llama txtCvPdf
 
-    if (archivoFoto) {
-      const formDataFoto = new FormData();
-      formDataFoto.append("file", archivoFoto);
-
-      const resFoto = await fetch("http://127.0.0.1:8000/api/upload/fotografia", {
-        method: "POST",
-        body: formDataFoto,
-      });
-
-      const datosFoto = await resFoto.json();
-      if (!resFoto.ok) {
-        setError("Error al subir la fotografía");
-        setCargando(false);
-        return;
-      }
-      urlFoto = datosFoto.url;
+    // Validaciones del Frontend
+    if (!archivoFoto || !archivoFoto.type.startsWith('image/')) {
+      setError('La fotografía es obligatoria y debe ser una imagen');
+      setCargando(false);
+      return;
     }
-
-    // 2. Después de subir la foto y antes de registrar al paciente tenemos que subir el PDF del DPI, ya que es obligatorio para el registro:
-    const archivoDPI = form.txtDpiPdf.files[0];
-
-    if (!archivoDPI) {
-      setError('Debes subir el archivo PDF de tu DPI');
+    if (!archivoDPI || archivoDPI.type !== 'application/pdf') {
+      setError('El archivo del DPI es obligatorio y debe ser PDF');
+      setCargando(false);
+      return;
+    }
+    if (archivoDPI.size > 2 * 1024 * 1024) {
+      setError('El PDF del DPI no debe superar los 2MB');
       setCargando(false);
       return;
     }
 
-    if (archivoDPI.type !== 'application/pdf') {
-      setError('El archivo del DPI debe ser un PDF');
-      setCargando(false);
-      return;
-    }
+    // Empaquetamos TODOS los datos en un FormData para el backend
+    const formData = new FormData();
+    formData.append("nombre", form.txtNombreP.value);
+    formData.append("apellido", form.txtApellidoP.value);
+    formData.append("dpi", form.txtDPIP.value);
+    formData.append("genero", form.txtGeneroP.value);
+    formData.append("direccion", form.txtDireccionP.value);
+    formData.append("telefono", form.txtTelefonoP.value);
+    formData.append("fecha_nacimiento", form.txtNacimientoP.value);
+    formData.append("correo", form.txtCorreoP.value);
+    formData.append("contrasena", form.txtPasswordP.value);
+    formData.append("fotografia", archivoFoto);
+    formData.append("archivo_dpi", archivoDPI); // Coincide con el backend
 
-    if (archivoDPI.size > 2 * 1024 * 1024) { // 2MB
-      setError('El archivo PDF del DPI no debe superar los 2MB');
-      setCargando(false);
-      return;
-    }
-
-    // Subir el PDF al backend
-    const formDataDPI = new FormData();
-    formDataDPI.append('file', archivoDPI);
-
-    const resDPI = await fetch('http://127.0.0.1:8000/api/upload/documento', {
-      method: 'POST',
-      body: formDataDPI,
-    });
-
-    const datosDPI = await resDPI.json();
-    if (!resDPI.ok) {
-      setError('Error al subir el archivo PDF del DPI');
-      setCargando(false);
-      return;
-    }
-    const urlDPI = datosDPI.url;
-
-    // 3. Registramos al paciente
     try {
       const respuesta = await fetch("http://127.0.0.1:8000/pacientes/registro", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: form.txtNombreP.value,
-          apellido: form.txtApellidoP.value,
-          dpi: form.txtDPIP.value,
-          genero: form.txtGeneroP.value,
-          direccion: form.txtDireccionP.value,
-          telefono: form.txtTelefonoP.value,
-          fecha_nacimiento: form.txtNacimientoP.value,
-          fotografia: urlFoto,
-          correo: form.txtCorreoP.value,
-          contrasena: form.txtPasswordP.value,
-        }),
+        body: formData,
       });
 
       const datos = await respuesta.json();

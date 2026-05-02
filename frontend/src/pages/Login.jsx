@@ -26,6 +26,7 @@ export const Login = () => {
     const correo = e.target.txtUserL.value;
     const contrasena = e.target.txtPasswordL.value;
 
+  /* 
     // ======= SIMULACIÓN TEMPORAL - BORRAR CUANDO EL BACKEND ESTÉ LISTO =======
     // Simula que juanO@email.com es primer ingreso
     if (correo === 'juanO@email.com' && contrasena === 'Ad123456') {
@@ -34,7 +35,7 @@ export const Login = () => {
       return;
     }
     // ======= FIN SIMULACIÓN =======
-
+ */
     try {
       const respuesta = await fetch('http://127.0.0.1:8000/api/auth/login', {
         method: 'POST',
@@ -74,7 +75,7 @@ export const Login = () => {
 
     const tokenVerificacion = e.target.txtToken.value.trim();
 
-    // ======= SIMULACIÓN TEMPORAL - BORRAR CUANDO EL BACKEND ESTÉ LISTO =======
+   /* // ======= SIMULACIÓN TEMPORAL - BORRAR CUANDO EL BACKEND ESTÉ LISTO =======
     if (tokenVerificacion === 'TOKEN123') {
       localStorage.setItem('token', 'fake-token-para-pruebas');
       localStorage.setItem('rol', 'paciente');
@@ -85,9 +86,9 @@ export const Login = () => {
       return;
     }
     // ======= FIN SIMULACIÓN =======
-
+*/
     try {
-      const respuesta = await fetch('http://127.0.0.1:8000/api/auth/verificar-token', {
+      const respuesta = await fetch('http://127.0.0.1:8000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

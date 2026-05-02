@@ -11,6 +11,8 @@ from sqlalchemy import text, func, desc
 from app.db.database import get_db
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
+from app.models.reporte import Reporte
+from app.models.calificacion import Calificacion
 from app.schemas.admin import ActualizarEstado
 from app.core.security import verificar_token
 import os
@@ -271,3 +273,99 @@ def reporte_top_especialidades_pdf(
         media_type="application/pdf", 
         headers={"Content-Disposition": "attachment; filename=reporte_especialidades.pdf"}
     )
+
+@router.get("/reportes", tags=["Administrador"])
+def listar_reportes(db: Session = Depends(get_db)):
+    # Traemos todos los reportes, ordenados del más reciente al más antiguo
+    reportes = db.query(Reporte).order_by(Reporte.fecha_creacion.desc()).all()
+    
+    if not reportes:
+        return {"mensaje": "No hay reportes registrados en el sistema.", "reportes": []}
+        
+    return {"reportes": reportes}
+
+
+@router.get("/calificaciones/promedios", tags=["Administrador"])
+def promedios_globales(db: Session = Depends(get_db)):
+    # Calculamos el promedio global usando func.avg de SQLAlchemy
+    promedio_general = db.query(func.avg(Calificacion.estrellas)).scalar()
+    
+    # Contamos cuántas calificaciones existen en total
+    total_calificaciones = db.query(Calificacion).count()
+    
+    # Si no hay calificaciones, promedio_general será None, lo manejamos devolviendo 0.0
+    promedio_seguro = round(promedio_general, 2) if promedio_general else 0.0
+    
+    return {
+        "promedio_global": promedio_seguro,
+        "total_calificaciones": total_calificaciones
+    }
+
+
+@router.get("/usuarios/activos", tags=["Administrador"])
+def listar_usuarios_activos(db: Session = Depends(get_db)):
+    # Buscar pacientes activos/aprobados
+    pacientes_activos = db.query(Paciente).filter(Paciente.estado == EstadoPacienteEnum.Aprobado).all()
+    
+    # Buscar médicos activos/aprobados
+    medicos_activos = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    
+    return {
+        "pacientes_activos": pacientes_activos,
+        "medicos_activos": medicos_activos,
+        "total_activos": len(pacientes_activos) + len(medicos_activos)
+    }
+
+@router.get("/reportes/analiticas/rendimiento-medicos", tags=["Administrador", "Analiticas"])
+def analitica_rendimiento_medicos(db: Session = Depends(get_db)):
+    # SQL Equivalente: 
+    # SELECT m.nombre, m.apellido, AVG(c.estrellas), COUNT(c.id_calificacion)
+    # FROM Medico m JOIN Cita ci ON m.id = ci.id_medico JOIN Calificacion c ON ci.id = c.id_cita
+    # GROUP BY m.id ORDER BY AVG(c.estrellas) DESC
+    
+    resultados = db.query(
+        Medico.id_medico,
+        Medico.nombre,
+        Medico.apellido,
+        Medico.especialidad,
+        func.round(func.avg(Calificacion.estrellas), 2).label('promedio_estrellas'),
+        func.count(Calificacion.id_calificacion).label('total_evaluaciones')
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .join(Calificacion, Cita.id_cita == Calificacion.id_cita)\
+     .group_by(Medico.id_medico, Medico.nombre, Medico.apellido, Medico.especialidad)\
+     .order_by(desc('promedio_estrellas'))\
+     .all()
+
+    # Formateamos la salida para que el frontend la consuma fácil
+    reporte = []
+    for row in resultados:
+        reporte.append({
+            "id_medico": row.id_medico,
+            "medico": f"Dr/Dra. {row.nombre} {row.apellido}",
+            "especialidad": row.especialidad,
+            "promedio": float(row.promedio_estrellas),
+            "evaluaciones": row.total_evaluaciones
+        })
+
+    return {"data_grafico": reporte}
+
+
+@router.get("/reportes/analiticas/incidentes", tags=["Administrador", "Analiticas"])
+def analitica_incidentes_categoria(db: Session = Depends(get_db)):
+    # SQL Equivalente:
+    # SELECT categoria, COUNT(id_reporte) FROM Reporte GROUP BY categoria
+    
+    resultados = db.query(
+        Reporte.categoria,
+        func.count(Reporte.id_reporte).label('cantidad')
+    ).group_by(Reporte.categoria).all()
+
+    reporte = []
+    for row in resultados:
+        # row.categoria devuelve el Enum, usamos .value para obtener el string
+        reporte.append({
+            "categoria": row.categoria.value if hasattr(row.categoria, 'value') else row.categoria,
+            "cantidad": row.cantidad
+        })
+
+    return {"data_grafico": reporte}

@@ -52,3 +52,7 @@ Thumbs.db
 # ==========================================
 app/static/fotos/*
 !app/static/fotos/.gitkeep
+static/uploads/medicos/*
+!static/uploads/medicos/.gitkeep
+static/uploads/pacientes/*
+!static/uploads/pacientes/.gitkeep
