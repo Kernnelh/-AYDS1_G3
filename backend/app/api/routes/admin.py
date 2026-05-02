@@ -273,3 +273,45 @@ def reporte_top_especialidades_pdf(
         media_type="application/pdf", 
         headers={"Content-Disposition": "attachment; filename=reporte_especialidades.pdf"}
     )
+
+@router.get("/reportes", tags=["Administrador"])
+def listar_reportes(db: Session = Depends(get_db)):
+    # Traemos todos los reportes, ordenados del más reciente al más antiguo
+    reportes = db.query(Reporte).order_by(Reporte.fecha_creacion.desc()).all()
+    
+    if not reportes:
+        return {"mensaje": "No hay reportes registrados en el sistema.", "reportes": []}
+        
+    return {"reportes": reportes}
+
+
+@router.get("/calificaciones/promedios", tags=["Administrador"])
+def promedios_globales(db: Session = Depends(get_db)):
+    # Calculamos el promedio global usando func.avg de SQLAlchemy
+    promedio_general = db.query(func.avg(Calificacion.estrellas)).scalar()
+    
+    # Contamos cuántas calificaciones existen en total
+    total_calificaciones = db.query(Calificacion).count()
+    
+    # Si no hay calificaciones, promedio_general será None, lo manejamos devolviendo 0.0
+    promedio_seguro = round(promedio_general, 2) if promedio_general else 0.0
+    
+    return {
+        "promedio_global": promedio_seguro,
+        "total_calificaciones": total_calificaciones
+    }
+
+
+@router.get("/usuarios/activos", tags=["Administrador"])
+def listar_usuarios_activos(db: Session = Depends(get_db)):
+    # Buscar pacientes activos/aprobados
+    pacientes_activos = db.query(Paciente).filter(Paciente.estado == EstadoPacienteEnum.Aprobado).all()
+    
+    # Buscar médicos activos/aprobados
+    medicos_activos = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    
+    return {
+        "pacientes_activos": pacientes_activos,
+        "medicos_activos": medicos_activos,
+        "total_activos": len(pacientes_activos) + len(medicos_activos)
+    }
