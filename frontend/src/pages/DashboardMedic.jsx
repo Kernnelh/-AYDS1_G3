@@ -72,12 +72,19 @@ export const DashboardMedic = () => {
 
   // ── Guardar tratamiento estructurado ──
   // treatment = { diagnostico, medicamentos: [{nombre, cantidad, tiempo, descripcion_dosis}] }
+// ── Guardar tratamiento estructurado ──
   const handleSaveTreatment = async (treatment) => {
     try {
-      const res = await fetch(`${API}/api/medicos/citas/${selectedAppointment.id_cita}/atender`, {
-        method: 'PUT',
+      // 1. Cambiamos la URL al endpoint nuevo y el método a POST
+      const res = await fetch(`${API}/api/medicos/tratamiento`, {
+        method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify(treatment), // ahora manda el objeto estructurado
+        body: JSON.stringify({
+          // 2. Inyectamos el id_cita que Pydantic nos exige en el backend
+          id_cita: selectedAppointment.id_cita, 
+          diagnostico: treatment.diagnostico,
+          medicamentos: treatment.medicamentos
+        }),
       });
 
       if (!res.ok) {

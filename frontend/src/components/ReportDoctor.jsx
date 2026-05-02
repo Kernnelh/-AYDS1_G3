@@ -6,12 +6,12 @@ import { Size } from "../styles/styles";
 const API = 'http://127.0.0.1:8000';
 
 const CATEGORIAS = [
-  'Ética y profesionalismo',
-  'Negligencia médica',
-  'Abuso y conducta inapropiada',
-  'Falsificación de información',
-  'Trato irrespetuoso al paciente',
-  'Cobros indebidos o irregulares',
+  'Conducta inapropiada',
+  'Falsificación de documentos',
+  'Agresión verbal o física',
+  'Robo o daño a las instalaciones',
+  'Falta de profesionalismo',
+  'Otro',
 ];
 
 export const ReportDoctor = ({ appointment, onClose, onSuccess }) => {
@@ -35,13 +35,18 @@ export const ReportDoctor = ({ appointment, onClose, onSuccess }) => {
     setError('');
 
     try {
-      const res = await fetch(`${API}/api/citas/${appointment.id_cita}/reportar-medico`, {
+      // 1. Ruta correcta de pacientes
+      const res = await fetch(`${API}/pacientes/reportar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ categoria, explicacion }),
+        body: JSON.stringify({ 
+          id_cita: appointment.id_cita, // 2. Enviamos el id_cita en el body
+          categoria: categoria, 
+          explicacion: explicacion 
+        }),
       });
 
       const datos = await res.json();

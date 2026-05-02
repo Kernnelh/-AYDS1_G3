@@ -23,13 +23,18 @@ export const RateDoctor = ({ appointment, onClose, onSuccess }) => {
     setError('');
 
     try {
-      const res = await fetch(`${API}/api/citas/${appointment.id_cita}/calificar-medico`, {
+      // 1. Cambiamos la URL a la ruta correcta de pacientes
+      const res = await fetch(`${API}/pacientes/calificar`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ estrellas, comentario }),
+        body: JSON.stringify({ 
+          id_cita: appointment.id_cita, // 2. Agregamos el id_cita al body
+          estrellas: estrellas, 
+          comentario: comentario 
+        }),
       });
 
       const datos = await res.json();

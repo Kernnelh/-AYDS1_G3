@@ -47,22 +47,23 @@ export const TreatmentView = () => {
     }
   };
 
-  // Genera e imprime el PDF de la receta usando la API del backend
+// Genera e imprime el PDF de la receta usando la API del backend
   const handleImprimirPdf = async () => {
     setGenerandoPdf(true);
     try {
-      const res = await fetch(`${API}/pacientes/tratamiento/pdf`, {
+      // CAMBIO AQUÍ: Agregamos /api/ y usamos el id_tratamiento del estado
+      const res = await fetch(`${API}/api/pacientes/tratamiento/${tratamiento.id_tratamiento}/receta`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!res.ok) {
-        alert('Error al generar el PDF.');
+        alert('Error al generar el PDF. Verifica que el tratamiento exista.');
         return;
       }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'receta_medica.pdf';
+      a.download = `Receta_${tratamiento.nombre_medico}.pdf`; // Le puse un nombre más dinámico
       a.click();
       window.URL.revokeObjectURL(url);
     } catch {

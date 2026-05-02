@@ -135,18 +135,23 @@ def obtener_historial_citas_paciente(
     resultado = []
     for cita in citas:
         medico = db.query(Medico).filter(Medico.id_medico == cita.id_medico).first()
+        # Buscamos si existe un tratamiento para esta cita
+        tratamiento_db = db.query(Tratamiento).filter(Tratamiento.id_cita == cita.id_cita).first()
         
         resultado.append({
             "id_cita": cita.id_cita,
-            "id_medico": cita.id_medico,           # AGREGAR
+            "id_medico": cita.id_medico,           # AGREGADO (Requerido)
             "fecha": cita.fecha,
             "hora": cita.hora,
             "motivo": cita.motivo,
-            "tratamiento": cita.tratamiento,
+            # EXTRAÍDO de la tabla Tratamiento, no de Cita
+            "tratamiento": tratamiento_db.diagnostico if tratamiento_db else "Sin tratamiento registrado",
+            # AGREGADO: ID para que el frontend pueda descargar el PDF
+            "id_tratamiento": tratamiento_db.id_tratamiento if tratamiento_db else None,
             "estado": cita.estado,
-            "medico": f"{medico.nombre} {medico.apellido}" if medico else "Médico Desconocido",  # QUITAR Dr.
-            "direccion_clinica": medico.direccion_clinica if medico else "No disponible",  # AGREGAR
-            "especialidad": medico.especialidad if medico else ""   # AGREGAR
+            "medico": f"{medico.nombre} {medico.apellido}" if medico else "Médico Desconocido",  # SIN Dr.
+            "direccion_clinica": medico.direccion_clinica if medico else "No disponible",  # AGREGADO
+            "especialidad": medico.especialidad if medico else ""   # AGREGADO
         })
         
     return resultado
@@ -235,10 +240,14 @@ def calificar_cita(datos: CalificacionCreate, db: Session = Depends(get_db)):
     if cita.estado != EstadoCitaEnum.Atendida:
         raise HTTPException(status_code=400, detail="Solo se pueden calificar citas que ya fueron Atendidas")
 
-    # 3. Verificar que no haya sido calificada antes (evitar spam)
-    calificacion_existente = db.query(Calificacion).filter(Calificacion.id_cita == datos.id_cita).first()
+    # 3. Verificar que el paciente no haya calificado esta cita antes (evitar spam)
+    calificacion_existente = db.query(Calificacion).filter(
+        Calificacion.id_cita == datos.id_cita,
+        Calificacion.autor == "Paciente"  # <--- ¡AÑADE ESTA LÍNEA!
+    ).first()
+    
     if calificacion_existente:
-         raise HTTPException(status_code=400, detail="Esta cita ya ha sido calificada anteriormente")
+         raise HTTPException(status_code=400, detail="Ya has calificado esta cita anteriormente")
 
     # 4. Guardar calificación
     nueva_calificacion = Calificacion(
