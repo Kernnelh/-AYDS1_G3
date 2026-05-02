@@ -1,0 +1,37 @@
+name: Backend CI/CD Pipeline
+
+# 1. ¿Cuándo se ejecuta?
+on:
+  push:
+    branches: [ "main" ] # Se ejecuta al hacer push a main
+  pull_request:
+    branches: [ "main" ] # Se ejecuta al hacer un PR hacia main
+
+jobs:
+  # === FASE DE INTEGRACIÓN CONTINUA (CI) ===
+  test:
+    name: Ejecutar Pruebas Unitarias
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./backend 
+
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name:  Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11" # Ajusta si usas otra versión
+          cache: 'pip' # Acelera las instalaciones futuras
+
+      - name:  Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name:  Ejecutar Pytest y Cobertura
+        run: |
+          pytest --cov=app --cov-report=term
