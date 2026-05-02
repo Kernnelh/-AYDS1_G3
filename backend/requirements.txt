@@ -11,3 +11,8 @@ python-dotenv
 email-validator
 reportlab
 bcrypt
+
+# --- Testing ---
+pytest
+httpx
+pytest-cov
