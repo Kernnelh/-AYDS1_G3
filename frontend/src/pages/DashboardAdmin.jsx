@@ -6,6 +6,8 @@ import { ApprovePatientsAdmin } from "../components/ApprovePatientsAdmin";
 import { ApproveMedicsAdmin } from "../components/ApproveMedicsAdmin";
 import { ViewPatientsAdmin } from "../components/ViewPatientsAdmin";
 import { ViewMedicsAdmin } from "../components/ViewMedicsAdmin";
+//imports graficas reportes
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const DashboardAdmin = () => {
   const [activeSection, setActiveSection] = useState('aceptar_pacientes');
@@ -19,6 +21,16 @@ export const DashboardAdmin = () => {
 
   // Token guardado en localStorage al hacer login
   const token = localStorage.getItem('token');
+
+  // Graficas reportes
+  const [analiticas, setAnaliticas] = useState({
+    rendimientoMedicos: [],
+    incidentes: [],
+    promedioGlobal: 0,
+    totalCalificaciones: 0,
+    usuariosActivos: { pacientes_activos: [], medicos_activos: [], total_activos: 0 }
+  });
+  const [cargandoAnaliticas, setCargandoAnaliticas] = useState(false);
 
   //REPORTES
   const [descargando, setDescargando] = useState(null); // null | 'medicos' | 'especialidades'
@@ -142,7 +154,11 @@ export const DashboardAdmin = () => {
 
   const handleSectionChange = async (key) => {
     setActiveSection(key);
-    await cargarDatos(); // recarga datos frescos al cambiar sección
+    if (key === 'analiticas') {
+      await cargarAnaliticas();
+    } else {
+      await cargarDatos(); // carga datos frescos al cambiar de seccion
+    }
   };
 
   //REPORTES
@@ -173,6 +189,36 @@ export const DashboardAdmin = () => {
       alert('Error de conexión al generar el reporte.');
     } finally {
       setDescargando(null);
+    }
+  };
+
+  // =========== CARGA GRAFICAS ANALÍTICAS ============
+  const cargarAnaliticas = async () => {
+    setCargandoAnaliticas(true);
+    try {
+      const [resRendimiento, resIncidentes, resPromedios, resActivos] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/admin/reportes/analiticas/rendimiento-medicos', { headers }),
+        fetch('http://127.0.0.1:8000/api/admin/reportes/analiticas/incidentes', { headers }),
+        fetch('http://127.0.0.1:8000/api/admin/calificaciones/promedios', { headers }),
+        fetch('http://127.0.0.1:8000/api/admin/usuarios/activos', { headers }),
+      ]);
+
+      const rendimiento = await resRendimiento.json();
+      const incidentes = await resIncidentes.json();
+      const promedios = await resPromedios.json();
+      const activos = await resActivos.json();
+
+      setAnaliticas({
+        rendimientoMedicos: rendimiento.data_grafico || [],
+        incidentes: incidentes.data_grafico || [],
+        promedioGlobal: promedios.promedio_global || 0,
+        totalCalificaciones: promedios.total_calificaciones || 0,
+        usuariosActivos: activos
+      });
+    } catch (err) {
+      console.error('Error al cargar analíticas:', err);
+    } finally {
+      setCargandoAnaliticas(false);
     }
   };
 
@@ -218,6 +264,7 @@ export const DashboardAdmin = () => {
             { key: 'ver_pacientes', label: 'Ver Pacientes', count: pacientesAprobados.length },
             { key: 'ver_medicos', label: 'Ver Médicos', count: medicosAprobados.length },
             { key: 'reportes', label: 'Reportes', count: null },
+            { key: 'analiticas', label: 'Analíticas', count: null },
           ].map(({ key, label, count }) => (
             <button
               key={key}
@@ -291,8 +338,8 @@ export const DashboardAdmin = () => {
                     )}
                     disabled={descargando === 'medicos'}
                     className={`w-full py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${descargando === 'medicos'
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
                       }`}
                   >
                     {descargando === 'medicos' ? 'Generando...' : '⬇ Descargar PDF'}
@@ -315,8 +362,8 @@ export const DashboardAdmin = () => {
                     )}
                     disabled={descargando === 'especialidades'}
                     className={`w-full py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2 ${descargando === 'especialidades'
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
                       }`}
                   >
                     {descargando === 'especialidades' ? 'Generando...' : '⬇ Descargar PDF'}
@@ -324,6 +371,114 @@ export const DashboardAdmin = () => {
                 </div>
 
               </div>
+            </div>
+          )}
+          {activeSection === 'analiticas' && (
+            <div className="space-y-8">
+              <h2 className={`${Size.EXTRALARGE} font-bold text-gray-800`}>
+                Analíticas del Sistema
+              </h2>
+
+              {cargandoAnaliticas ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Cargando analíticas...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Tarjetas de resumen */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-blue-50 rounded-lg p-6 text-center">
+                      <p className={`${Size.MEDIUM} text-blue-600 font-semibold`}>Promedio Global de Calificaciones</p>
+                      <p className="text-4xl font-bold text-blue-700 mt-2">
+                        {analiticas.promedioGlobal} ⭐
+                      </p>
+                      <p className={`${Size.MEDIUM} text-blue-500 mt-1`}>
+                        {analiticas.totalCalificaciones} calificaciones totales
+                      </p>
+                    </div>
+
+                    <div className="bg-green-50 rounded-lg p-6 text-center">
+                      <p className={`${Size.MEDIUM} text-green-600 font-semibold`}>Pacientes Activos</p>
+                      <p className="text-4xl font-bold text-green-700 mt-2">
+                        {analiticas.usuariosActivos.pacientes_activos?.length || 0}
+                      </p>
+                    </div>
+
+                    <div className="bg-purple-50 rounded-lg p-6 text-center">
+                      <p className={`${Size.MEDIUM} text-purple-600 font-semibold`}>Médicos Activos</p>
+                      <p className="text-4xl font-bold text-purple-700 mt-2">
+                        {analiticas.usuariosActivos.medicos_activos?.length || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Gráfica 1: Rendimiento de médicos */}
+                  <div className="bg-white rounded-lg p-6 shadow-md">
+                    <h3 className={`${Size.LARGE} font-bold text-gray-800 mb-6`}>
+                      ⭐ Rendimiento de Médicos por Calificación
+                    </h3>
+                    {analiticas.rendimientoMedicos.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No hay calificaciones registradas aún</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart
+                          data={analiticas.rendimientoMedicos}
+                          margin={{ top: 10, right: 30, left: 0, bottom: 80 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="medico"
+                            angle={-35}
+                            textAnchor="end"
+                            interval={0}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis domain={[0, 5]} />
+                          <Tooltip
+                            formatter={(value, name) => [
+                              name === 'promedio' ? `${value} ⭐` : value,
+                              name === 'promedio' ? 'Promedio' : 'Evaluaciones'
+                            ]}
+                          />
+                          <Legend />
+                          <Bar dataKey="promedio" name="Promedio ⭐" fill="#f59e0b" />
+                          <Bar dataKey="evaluaciones" name="Evaluaciones" fill="#3b82f6" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                  {/* Gráfica 2: Incidentes por categoría */}
+                  <div className="bg-white rounded-lg p-6 shadow-md">
+                    <h3 className={`${Size.LARGE} font-bold text-gray-800 mb-6`}>
+                      ⚠️ Reportes de Incidentes por Categoría
+                    </h3>
+                    {analiticas.incidentes.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No hay reportes registrados aún</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart
+                          data={analiticas.incidentes}
+                          margin={{ top: 10, right: 30, left: 0, bottom: 80 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="categoria"
+                            angle={-35}
+                            textAnchor="end"
+                            interval={0}
+                            tick={{ fontSize: 11 }}
+                          />
+                          <YAxis allowDecimals={false} />
+                          <Tooltip formatter={(value) => [value, 'Reportes']} />
+                          <Bar dataKey="cantidad" name="Cantidad de Reportes" fill="#ef4444" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+
+                </>
+              )}
             </div>
           )}
         </motion.div>
