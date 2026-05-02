@@ -33,5 +33,17 @@ jobs:
           pip install -r requirements.txt
 
       - name:  Ejecutar Pytest y Cobertura
+        env:
+          DB_HOST: "localhost"
+          DB_PORT: "3306"
+          DB_USER: "usuario_falso"
+          DB_PASSWORD: "password_falsa"
+          DB_NAME: "db_falsa"
+          SECRET_KEY: falso
+          ALGORITHM: HS256
+          SMTP_SERVER: "falso"
+          SMTP_PORT: 587
+          SENDER_EMAIL: "falso"
+          SENDER_PASSWORD: "falso"
         run: |
           pytest --cov=app --cov-report=term
