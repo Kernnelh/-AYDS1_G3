@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdSearch, MdLocalHospital } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 import { ApprovedMedicCard } from "./ApprovedMedicCard";
+
+const API = 'http://127.0.0.1:8000';
 
 export const ViewMedicsAdmin = ({ medicosAprobados, onDeactivate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredMedicos, setFilteredMedicos] = useState(medicosAprobados);
   const [deactivatedMedics, setDeactivatedMedics] = useState([]);
+
+  const token = localStorage.getItem('token');
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -21,7 +25,7 @@ export const ViewMedicsAdmin = ({ medicosAprobados, onDeactivate }) => {
         const dpi = medico.dpi.toLowerCase();
         const correo = medico.correo.toLowerCase();
         const especialidad = medico.especialidad.toLowerCase();
-        const colegiado = medico.numero_colegiado.toLowerCase();
+        const colegiado = (medico.numero_colegiado || medico.no_colegiado || '').toLowerCase();
         return (
           fullName.includes(query) ||
           dpi.includes(query) ||
@@ -34,21 +38,72 @@ export const ViewMedicsAdmin = ({ medicosAprobados, onDeactivate }) => {
     }
   };
 
-  const handleDeactivateMedic = (medicId, razon) => {
-    const medico = filteredMedicos.find(m => m.id_medico === medicId);
-    if (!medico) return;
+  const handleDeactivateMedic = async (medicId, razon) => {
+    try {
+      const res = await fetch(`${API}/api/admin/usuarios/medico/${medicId}/baja`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ razon_baja: razon })
+      });
 
-    console.log(`Médico dado de baja: ${medico.nombre}, Motivo: ${razon}`);
-    onDeactivate(medicId, razon);
-    
-    setDeactivatedMedics([
-      ...deactivatedMedics,
-      { ...medico, razon_baja: razon }
-    ]);
+      if (!res.ok) {
+        alert('Error al dar de baja');
+        return;
+      }
 
-    setFilteredMedicos(
-      filteredMedicos.filter(m => m.id_medico !== medicId)
-    );
+      const medico = filteredMedicos.find(m => m.id_medico === medicId);
+      if (!medico) return;
+
+      setDeactivatedMedics([
+        ...deactivatedMedics,
+        { ...medico, razon_baja: razon }
+      ]);
+
+      setFilteredMedicos(
+        filteredMedicos.filter(m => m.id_medico !== medicId)
+      );
+    } catch (err) {
+      console.error('Error al dar de baja médico:', err);
+      alert('Error de conexión');
+    }
+  };
+
+  const handleUpdateMedic = async (medicId, updatedData) => {
+    try {
+      const res = await fetch(`${API}/api/admin/usuarios/medico/${medicId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nombre: updatedData.nombre,
+          apellido: updatedData.apellido,
+          genero: updatedData.genero,
+          especialidad: updatedData.especialidad,
+          numero_colegiado: updatedData.numero_colegiado || updatedData.no_colegiado
+        })
+      });
+
+      if (!res.ok) {
+        alert('Error al actualizar médico');
+        return;
+      }
+
+      // Actualizar la lista localmente
+      setFilteredMedicos(
+        filteredMedicos.map(m =>
+          m.id_medico === medicId ? updatedData : m
+        )
+      );
+      alert('Médico actualizado correctamente');
+    } catch (err) {
+      console.error('Error al actualizar médico:', err);
+      alert('Error de conexión');
+    }
   };
 
   return (
@@ -122,6 +177,7 @@ export const ViewMedicsAdmin = ({ medicosAprobados, onDeactivate }) => {
               <ApprovedMedicCard
                 medico={medico}
                 onDeactivate={handleDeactivateMedic}
+                onUpdate={handleUpdateMedic}
               />
             </motion.div>
           ))}

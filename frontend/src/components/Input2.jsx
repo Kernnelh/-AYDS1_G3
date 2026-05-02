@@ -1,4 +1,4 @@
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export function Input2(type, id, placeholder, icon, options = null, extraProps = {}) {
     return (
@@ -36,9 +36,10 @@ export function Input2(type, id, placeholder, icon, options = null, extraProps =
                         type={type}
                         id={id}
                         name={id}
-                        placeholder={placeholder}
+                        placeholder={type !== "file" ? placeholder : undefined}
                         {...extraProps}
-                        className={`bg-white rounded-none rounded-r-full w-full h-[40px] border text-[#353C43] flex-1 ${Size.LARGE} border-neutral-400 p-3 border-l-0 font-[sansation-regular]`}
+                        className={`bg-white rounded-none rounded-r-full w-full h-[40px] border text-[#353C43] flex-1 ${Size.LARGE} border-neutral-400 p-2 border-l-0 font-[sansation-regular]
+    ${type === "file" ? "file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:bg-blue-500 file:text-white hover:file:bg-blue-600" : ""}`}
                     />
                 )}
             </div>

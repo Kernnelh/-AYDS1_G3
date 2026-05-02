@@ -1,109 +1,246 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
-import { Button1 } from "../components/Button1";
+import { MdLogout } from 'react-icons/md';
+import { Size, Background } from "../styles/styles";
 import { PendingAppointmentsMedic } from "../components/PendingAppointmentsMedic";
 import { TreatmentForm } from "../components/TreatmentForm";
 import { SetSchedule } from "../components/SetSchedule";
 import { AppointmentHistoryMedic } from "../components/AppointmentHistoryMedic";
 import { MedicProfile } from "../components/MedicProfile";
 
-// DATOS QUEMADOS - REEMPLAZAR CON DATOS DEL BACKEND
-import { medicosMock, citasMock, pacientesMock } from "../mock/dataMock";
+const API = 'http://127.0.0.1:8000';
 
 export const DashboardMedic = () => {
-  // Estados para navegación
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+
   const [activeSection, setActiveSection] = useState('citas_pendientes');
-
-  // Estados para médico y citas
-  const [medico, setMedico] = useState(medicosMock[0]); // REEMPLAZAR CON DATOS DEL MÉDICO AUTENTICADO
-  const [citas, setCitas] = useState(citasMock);
-  const [pacientes, setPacientes] = useState(pacientesMock);
-
-  // Estados para atender paciente
+  const [medico, setMedico] = useState(null);
+  const [citas, setCitas] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const [treatmentModal, setTreatmentModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
-
-  // Estados para cancelar cita
   const [cancelingId, setCancelingId] = useState(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filtrar citas pendientes del médico actual
-  const pendingAppointments = citas
-    .filter(c => c.id_medico === medico.id_medico && c.estado === 'Pendiente')
-    .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+  // ── Toast global (calificar / reportar) ──
+  const [toastMsg, setToastMsg] = useState('');
 
-  // Manejador para abrir modal de tratamiento
+  useEffect(() => {
+    if (!token) { navigate('/'); return; }
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    setCargando(true);
+    try {
+      const [resPerfil, resCitas, resHistorial] = await Promise.all([
+        fetch(`${API}/api/medicos/perfil`, { headers: authHeaders }),
+        fetch(`${API}/api/medicos/citas/pendientes`, { headers: authHeaders }),
+        fetch(`${API}/api/medicos/citas/historial`, { headers: authHeaders }),
+      ]);
+
+      if (resPerfil.status === 401) { handleLogout(); return; }
+
+      setMedico(await resPerfil.json());
+      setCitas(await resCitas.json());
+      setHistorial(await resHistorial.json());
+    } catch {
+      setError('Error de conexión con el servidor.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('rol');
+    navigate('/');
+  };
+
+  // ── Atender cita — abre modal ──
   const handleAttendClick = (appointment) => {
     setSelectedAppointment(appointment);
     setTreatmentModal(true);
   };
 
-  // Manejador para guardar tratamiento
-  const handleSaveTreatment = (treatment) => {
-    if (!selectedAppointment) return;
+  // ── Guardar tratamiento estructurado ──
+  // treatment = { diagnostico, medicamentos: [{nombre, cantidad, tiempo, descripcion_dosis}] }
+// ── Guardar tratamiento estructurado ──
+  const handleSaveTreatment = async (treatment) => {
+    try {
+      // 1. Cambiamos la URL al endpoint nuevo y el método a POST
+      const res = await fetch(`${API}/api/medicos/tratamiento`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          // 2. Inyectamos el id_cita que Pydantic nos exige en el backend
+          id_cita: selectedAppointment.id_cita, 
+          diagnostico: treatment.diagnostico,
+          medicamentos: treatment.medicamentos
+        }),
+      });
 
-    const updatedCitas = citas.map(cita =>
-      cita.id_cita === selectedAppointment.id_cita
-        ? { ...cita, estado: 'Atendida', tratamiento: treatment }
-        : cita
-    );
-    setCitas(updatedCitas);
-    setTreatmentModal(false);
-    setSelectedAppointment(null);
-  };
-
-  // Manejador para cancelar cita
-  const handleCancelAppointment = (appointmentId) => {
-    const appointment = citas.find(c => c.id_cita === appointmentId);
-    if (!appointment) return;
-
-    // Aquí iría la lógica de envío de correo al paciente
-    console.log('📧 Enviar correo de cancelación a:', pacientes.find(p => p.id_paciente === appointment.id_paciente)?.correo);
-
-    const updatedCitas = citas.map(cita =>
-      cita.id_cita === appointmentId
-        ? { ...cita, estado: 'Cancelada_Medico', fecha_cancelacion: new Date().toISOString() }
-        : cita
-    );
-    setCitas(updatedCitas);
-    setCancelingId(null);
-  };
-
-  // Manejador para actualizar horario
-  const handleUpdateSchedule = (newSchedule) => {
-    // Validar que no haya citas fuera del nuevo rango horario
-    const conflictingAppointments = citas.filter(c => {
-      if (c.id_medico !== medico.id_medico || c.estado === 'Cancelada_Paciente' || c.estado === 'Cancelada_Medico') {
-        return false;
+      if (!res.ok) {
+        const datos = await res.json();
+        alert(datos.detail || 'Error al guardar tratamiento');
+        return;
       }
-      const citaHour = parseInt(c.hora.split(':')[0]);
-      const newStart = parseInt(newSchedule.hora_inicio.split(':')[0]);
-      const newEnd = parseInt(newSchedule.hora_fin.split(':')[0]);
-      return citaHour < newStart || citaHour >= newEnd;
-    });
 
-    if (conflictingAppointments.length > 0) {
-      alert('⚠️ No puedes actualizar tu horario mientras haya citas activas fuera del nuevo rango. Reprograma o cancela esas citas primero.');
-      return;
+      await cargarDatos();
+      setTreatmentModal(false);
+      setSelectedAppointment(null);
+    } catch {
+      alert('Error de conexión.');
     }
-
-    setMedico({
-      ...medico,
-      horario_inicio: newSchedule.hora_inicio,
-      horario_fin: newSchedule.hora_fin,
-      dias_atencion: newSchedule.dias_atencion
-    });
   };
 
-  // Manejador para actualizar perfil
-  const handleUpdateProfile = (updatedProfile) => {
-    setMedico(updatedProfile);
+  // ── Cancelar cita ──
+  const handleCancelAppointment = async (appointmentId, motivoCancelacion) => {
+    try {
+      const res = await fetch(`${API}/api/medicos/citas/${appointmentId}/cancelar`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({ motivo_cancelacion: motivoCancelacion }),
+      });
+
+      if (!res.ok) {
+        const datos = await res.json();
+        alert(datos.detail || 'Error al cancelar');
+        return;
+      }
+
+      await cargarDatos();
+      setCancelingId(null);
+    } catch {
+      alert('Error de conexión.');
+    }
   };
+
+  // ── Cambio de sección ──
+  const handleSectionChange = async (key) => {
+    setActiveSection(key);
+    // Refresca historial al entrar (para reflejar calificado/reportado)
+    if (key === 'historial') {
+      try {
+        const res = await fetch(`${API}/api/medicos/citas/historial`, { headers: authHeaders });
+        if (res.ok) setHistorial(await res.json());
+      } catch { /* silencioso */ }
+    }
+  };
+
+  // ── Actualizar horario ──
+  const handleUpdateSchedule = async (newSchedule) => {
+    try {
+      const res = await fetch(`${API}/api/medicos/horarios`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          hora_inicio: newSchedule.hora_inicio,
+          hora_fin: newSchedule.hora_fin,
+          dias: newSchedule.dias_atencion,
+        }),
+      });
+
+      if (!res.ok) {
+        const datos = await res.json();
+        // Re-lanza con el mensaje del backend (ej: "hay citas activas fuera del rango")
+        throw new Error(datos.detail || 'Error al actualizar horario');
+      }
+
+      await cargarDatos();
+      return true;
+    } catch (err) {
+      throw err; // SetSchedule lo muestra
+    }
+  };
+
+  // ── Actualizar perfil ──
+  const handleUpdateProfile = async (updatedProfile) => {
+    try {
+      const res = await fetch(`${API}/api/medicos/perfil`, {
+        method: 'PUT',
+        headers: authHeaders,
+        body: JSON.stringify({
+          nombre: updatedProfile.nombre,
+          apellido: updatedProfile.apellido,
+          telefono: updatedProfile.telefono,
+          direccion: updatedProfile.direccion,
+          direccion_clinica: updatedProfile.direccion_clinica,
+          especialidad: updatedProfile.especialidad,
+          genero: updatedProfile.genero,
+          fecha_nacimiento: updatedProfile.fecha_nacimiento,
+        }),
+      });
+
+      if (!res.ok) {
+        const datos = await res.json();
+        alert(datos.detail || 'Error al actualizar perfil');
+        return;
+      }
+
+      setMedico(await res.json());
+    } catch {
+      alert('Error de conexión.');
+    }
+  };
+
+  // ── Toast tras calificar / reportar ──
+  const handleActionSuccess = async (msg) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 4000);
+    // Refresca historial para que los botones cambien a "ya hecho"
+    try {
+      const res = await fetch(`${API}/api/medicos/citas/historial`, { headers: authHeaders });
+      if (res.ok) setHistorial(await res.json());
+    } catch { /* silencioso */ }
+  };
+
+  // ── Loading / Error ──
+  if (cargando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600 text-xl">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (error || !medico) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-red-500 text-xl">{error || 'Error al cargar datos'}</p>
+      </div>
+    );
+  }
+
+  const NAV_TABS = [
+    { key: 'citas_pendientes', label: `Citas Pendientes (${citas.length})` },
+    { key: 'horarios',         label: 'Mis Horarios' },
+    { key: 'historial',        label: 'Historial de Citas' },
+    { key: 'perfil',           label: 'Mi Perfil' },
+  ];
 
   return (
     <div className={`min-h-screen ${Background.BACKGROUND} p-4 md:p-8`}>
       <div className="max-w-7xl mx-auto">
-        
+
+        {/* Toast global */}
+        {toastMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg font-semibold"
+          >
+            ✅ {toastMsg}
+          </motion.div>
+        )}
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -111,79 +248,46 @@ export const DashboardMedic = () => {
           className="flex justify-between items-center mb-8 bg-white rounded-lg p-6 shadow-md"
         >
           <div>
-            <h1 className={`${Size.EXTRALARGE} text-gray-800`}>Bienvenido, Dr(a). {medico.nombre}</h1>
+            <h1 className={`${Size.EXTRALARGE} text-gray-800`}>
+              Bienvenido, Dr. {medico.nombre} {medico.apellido}
+            </h1>
             <p className={`${Size.MEDIUM} text-gray-600`}>Gestiona tus citas y horarios</p>
           </div>
-          <div className="flex gap-4">
-            <Button1 
-              nombre="Cerrar sesión" 
-              id="logout"
-              type='link' 
-              link='/'
-              color={CButton.MATE}
-            />
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition"
+          >
+            <MdLogout /> Cerrar sesión
+          </button>
         </motion.div>
 
-        {/* Navegación de Secciones */}
+        {/* Navegación */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-wrap gap-3 mb-8 bg-white rounded-lg p-4 shadow-md"
         >
-          <button
-            onClick={() => setActiveSection('citas_pendientes')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'citas_pendientes'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Citas Pendientes ({pendingAppointments.length})
-          </button>
-          <button
-            onClick={() => setActiveSection('horarios')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'horarios'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Mis Horarios
-          </button>
-          <button
-            onClick={() => setActiveSection('historial')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'historial'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Historial de Citas
-          </button>
-          <button
-            onClick={() => setActiveSection('perfil')}
-            className={`px-4 py-2 rounded-lg font-semibold transition ${
-              activeSection === 'perfil'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            Mi Perfil
-          </button>
+          {NAV_TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => handleSectionChange(key)}
+              className={`px-4 py-2 rounded-lg font-semibold transition ${
+                activeSection === key
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </motion.div>
 
-        {/* SECCIÓN: CITAS PENDIENTES */}
+        {/* ── CITAS PENDIENTES ── */}
         {activeSection === 'citas_pendientes' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <PendingAppointmentsMedic
-              appointments={pendingAppointments}
-              pacientes={pacientes}
+              appointments={citas}
               onAttend={handleAttendClick}
-              onCancel={() => setCancelingId('confirm')}
               onConfirmCancel={handleCancelAppointment}
               cancelingId={cancelingId}
               setCancelingId={setCancelingId}
@@ -191,50 +295,35 @@ export const DashboardMedic = () => {
           </motion.div>
         )}
 
-        {/* SECCIÓN: HORARIOS */}
+        {/* ── HORARIOS ── */}
         {activeSection === 'horarios' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <SetSchedule
-              medico={medico}
-              onUpdate={handleUpdateSchedule}
-            />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <SetSchedule medico={medico} onUpdate={handleUpdateSchedule} />
           </motion.div>
         )}
 
-        {/* SECCIÓN: HISTORIAL */}
+        {/* ── HISTORIAL ── */}
         {activeSection === 'historial' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <AppointmentHistoryMedic
-              appointments={citas.filter(c => c.id_medico === medico.id_medico && c.estado !== 'Pendiente')}
-              pacientes={pacientes}
+              appointments={historial}
+              onActionSuccess={handleActionSuccess}
             />
           </motion.div>
         )}
 
-        {/* SECCIÓN: PERFIL */}
+        {/* ── PERFIL ── */}
         {activeSection === 'perfil' && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <MedicProfile
-              medico={medico}
-              onUpdate={handleUpdateProfile}
-            />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <MedicProfile medico={medico} onUpdate={handleUpdateProfile} />
           </motion.div>
         )}
 
-        {/* Modal de tratamiento */}
+        {/* ── Modal tratamiento estructurado ── */}
         {treatmentModal && selectedAppointment && (
           <TreatmentForm
             appointment={selectedAppointment}
-            paciente={pacientes.find(p => p.id_paciente === selectedAppointment.id_paciente)}
+            paciente={{ nombre: selectedAppointment.paciente }}
             onSave={handleSaveTreatment}
             onClose={() => {
               setTreatmentModal(false);
@@ -242,6 +331,7 @@ export const DashboardMedic = () => {
             }}
           />
         )}
+
       </div>
     </div>
   );

@@ -14,3 +14,11 @@ class PacienteCreate(BaseModel):
     fotografia: Optional[str] = None
     correo: EmailStr
     contrasena: str = Field(..., min_length=8) # Exigimos mínimo 8 caracteres
+
+class PacienteUpdate(BaseModel):
+    nombre: str
+    apellido: str
+    telefono: str
+    direccion: str
+    fecha_nacimiento: date
+    genero: GeneroEnum

@@ -8,7 +8,7 @@ import { FaPhotoVideo } from "react-icons/fa";
 import { IoMdMailOpen } from "react-icons/io";
 
 // Estilos y componentes
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 import { IconButton } from "../components/IconButton";
 import { Input2 } from "../components/Input2";
 import { Button1 } from "../components/Button1";
@@ -18,14 +18,73 @@ import logo2 from "../assets/logo2.png";
 
 export const RegisterMedic = () => {
   const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-    const datos = new FormData(e.target);
+    setError(null);
+    setMensaje("");
+    setCargando(true);
 
-    console.log(Object.fromEntries(datos));
+    const form = e.target;
+    const archivoFoto = form.txtFotografiaM.files[0];
+    const archivoCV = form.txtCvPdf.files[0];
 
-    setMensaje("Cuenta creada con éxito");
+    // Validaciones del Frontend
+    if (!archivoFoto || !archivoFoto.type.startsWith('image/')) {
+      setError('La fotografía es obligatoria y debe ser una imagen');
+      setCargando(false);
+      return;
+    }
+    if (!archivoCV || archivoCV.type !== 'application/pdf') {
+      setError('El Curriculum Vitae es obligatorio y debe ser PDF');
+      setCargando(false);
+      return;
+    }
+    if (archivoCV.size > 2 * 1024 * 1024) {
+      setError('El PDF del Curriculum Vitae no debe superar los 2MB');
+      setCargando(false);
+      return;
+    }
+
+    // Empaquetamos TODOS los datos en un FormData para el backend
+    const formData = new FormData();
+    formData.append("nombre", form.txtNombreM.value);
+    formData.append("apellido", form.txtApellidoM.value);
+    formData.append("dpi", form.txtDPIM.value);
+    formData.append("genero", form.txtGeneroM.value);
+    formData.append("direccion", form.txtDireccionM.value);
+    formData.append("telefono", form.txtTelefonoM.value);
+    formData.append("fecha_nacimiento", form.txtNacimientoM.value);
+    formData.append("no_colegiado", form.txtColegiadoM.value);
+    formData.append("especialidad", form.txtEspecialidadM.value);
+    formData.append("direccion_clinica", form.txtDireccionClinicaM.value);
+    formData.append("correo", form.txtCorreoM.value);
+    formData.append("contrasena", form.txtPasswordM.value);
+    formData.append("fotografia", archivoFoto);
+    formData.append("archivo_cv", archivoCV); // Coincide con el backend
+
+    try {
+      // Nota: NO se debe enviar "Content-Type: application/json"
+      const respuesta = await fetch("http://127.0.0.1:8000/api/medicos/registro", {
+        method: "POST",
+        body: formData,
+      });
+
+      const datos = await respuesta.json();
+
+      if (respuesta.ok) {
+        setMensaje("¡Cuenta creada con éxito! Espera la aprobación del administrador.");
+        form.reset();
+      } else {
+        setError(datos.detail || "Error al registrar");
+      }
+    } catch (err) {
+      setError("Error de conexión con el servidor.");
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -91,6 +150,10 @@ export const RegisterMedic = () => {
                     {Input2("date", "txtNacimientoM", "Fecha de nacimiento", <MdCardGiftcard className="text-gray-700 text-xl" />)}
                   </div>
                   <div className="flex-1">
+                    <label className="block text-gray-700 font-semibold mb-1">
+                      Fotografía <span className="text-red-500">*</span>
+                      <span className="text-gray-400 font-normal ml-2 text-sm">(obligatoria)</span>
+                    </label>
                     {Input2("file", "txtFotografiaM", "Fotografía", <FaPhotoVideo className="text-gray-700 text-xl" />)}
                   </div>
                 </div>
@@ -109,6 +172,34 @@ export const RegisterMedic = () => {
                 <div className="flex flex-col lg:flex-row gap-x-5">
                   <div className="flex-1">
                     {Input2("text", "txtDireccionClinicaM", "Direccion de la clínica", <MdTextSnippet className="text-gray-700 text-xl" />)}
+                  </div>
+                </div>
+
+                {/* CV en PDF */}
+                <div className="flex flex-col lg:flex-row gap-x-5">
+                  <div className="flex-1">
+                    {Input2(
+                      "file",
+                      "txtCvPdf",
+                      "Curriculum Vitae en PDF",
+                      <MdTextSnippet className="text-gray-700 text-xl" />,
+                      null,
+                      {
+                        accept: ".pdf,application/pdf",
+                        onChange: (e) => {
+                          const file = e.target.files[0];
+                          if (file && file.size > 2 * 1024 * 1024) {
+                            setError('El PDF del CV no debe superar los 2MB');
+                            e.target.value = '';
+                          } else {
+                            setError(null);
+                          }
+                        }
+                      }
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      Solo archivos PDF · Peso máximo: 2MB
+                    </p>
                   </div>
                 </div>
 
@@ -136,8 +227,21 @@ export const RegisterMedic = () => {
 
               {/* Botón Crear Cuenta */}
               <div className="flex justify-center w-full mb-2">
-                <Button1 nombre='Crear cuenta Medico' id='crearCuentaM' type='submit' link='' color={CButton.MATE} />
+                <Button1
+                  nombre={cargando ? 'Registrando...' : 'Crear cuenta Medico'}
+                  id='crearCuentaM'
+                  type='submit'
+                  link=''
+                  color={CButton.MATE}
+                />
               </div>
+
+              {error && (
+                <div className="text-red-500 font-semibold text-center mt-2">
+                  {error}
+                </div>
+              )}
+
               {mensaje && (
                 <div className="text-green-600 font-semibold text-center mt-2">
                   {mensaje}

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
+import { useState } from 'react';  
 
 export const PendingAppointmentsMedic = ({
   appointments,
@@ -10,10 +11,9 @@ export const PendingAppointmentsMedic = ({
   cancelingId,
   setCancelingId
 }) => {
-  const getPacienteInfo = (idPaciente) => {
-    return pacientes.find(p => p.id_paciente === idPaciente);
-  };
 
+  // Agrega estado para el motivo en PendingAppointmentsMedic.jsx
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className={`${Size.LARGE} font-bold text-gray-800 mb-6`}>
@@ -30,7 +30,6 @@ export const PendingAppointmentsMedic = ({
         <div className="space-y-4">
           <AnimatePresence>
             {appointments.map((appointment, idx) => {
-              const paciente = getPacienteInfo(appointment.id_paciente);
               const isConfirmingCancel = cancelingId === appointment.id_cita;
 
               return (
@@ -45,14 +44,14 @@ export const PendingAppointmentsMedic = ({
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h3 className={`${Size.LARGE} font-bold text-gray-800`}>
-                        {paciente?.nombre} {paciente?.apellido}
+                        {appointment.paciente}
                       </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                         <div>
                           <p className={`${Size.MEDIUM} text-gray-600`}>Fecha:</p>
                           <p className={`${Size.LARGE} font-semibold text-gray-800`}>
-                            {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                            {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                           </p>
                         </div>
 
@@ -73,7 +72,7 @@ export const PendingAppointmentsMedic = ({
                         <div className="md:col-span-2">
                           <p className={`${Size.MEDIUM} text-gray-600`}>Contacto:</p>
                           <p className={`${Size.MEDIUM} text-gray-800`}>
-                            📧 {paciente?.correo} | 📱 {paciente?.telefono}
+                            {appointment.correo_paciente}
                           </p>
                         </div>
                       </div>
@@ -94,20 +93,37 @@ export const PendingAppointmentsMedic = ({
                             ¿Cancelar cita?
                           </p>
                           <p className={`${Size.SMALL} text-gray-600`}>
-                            Se enviará correo al paciente
+                            Se notificará al paciente por correo
                           </p>
+                          <textarea
+                            value={motivoCancelacion}
+                            onChange={(e) => setMotivoCancelacion(e.target.value)}
+                            placeholder="Motivo de cancelación..."
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                          />
                           <div className="flex gap-2">
                             <button
-                              onClick={() => onConfirmCancel(appointment.id_cita)}
+                              onClick={() => {
+                                if (!motivoCancelacion.trim()) {
+                                  alert('Debes ingresar un motivo de cancelación');
+                                  return;
+                                }
+                                onConfirmCancel(appointment.id_cita, motivoCancelacion);
+                                setMotivoCancelacion('');
+                              }}
                               className="flex-1 bg-red-500 text-white py-2 rounded hover:bg-red-600 font-semibold text-sm"
                             >
-                              Sí
+                              Confirmar
                             </button>
                             <button
-                              onClick={() => setCancelingId(null)}
+                              onClick={() => {
+                                setCancelingId(null);
+                                setMotivoCancelacion('');
+                              }}
                               className="flex-1 bg-gray-400 text-white py-2 rounded hover:bg-gray-500 font-semibold text-sm"
                             >
-                              No
+                              Volver
                             </button>
                           </div>
                         </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdEdit, MdSave, MdClose } from 'react-icons/md';
-import { Size, SizeBox, CButton, Background } from "../styles/Styles";
+import { Size, SizeBox, CButton, Background } from "../styles/styles";
 
 export const PatientProfile = ({ paciente, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -36,12 +36,43 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
-    if (validateForm()) {
-      onUpdate(formData);
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    const token = localStorage.getItem('token');
+
+    try {
+      const res = await fetch('http://127.0.0.1:8000/pacientes/perfil', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+          telefono: formData.telefono,
+          direccion: formData.direccion,
+          fecha_nacimiento: formData.fecha_nacimiento,
+          genero: formData.genero,
+        })
+      });
+
+      const datos = await res.json();
+
+      if (!res.ok) {
+        alert(datos.detail || 'Error al actualizar el perfil');
+        return;
+      }
+
+      onUpdate(datos); // Actualiza el estado en el Dashboard con los datos reales de la BD
+      setFormData(datos);
       setSuccess(true);
       setIsEditing(false);
       setTimeout(() => setSuccess(false), 3000);
+
+    } catch (err) {
+      alert('Error de conexión al actualizar el perfil.');
     }
   };
 
@@ -100,9 +131,8 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
                 name="nombre"
                 value={formData.nombre}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.nombre ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.nombre ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>{formData.nombre}</p>
@@ -119,9 +149,8 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
                 name="apellido"
                 value={formData.apellido}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.apellido ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.apellido ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>{formData.apellido}</p>
@@ -162,13 +191,12 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
                 name="fecha_nacimiento"
                 value={formData.fecha_nacimiento}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.fecha_nacimiento ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.fecha_nacimiento ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>
-                {new Date(formData.fecha_nacimiento).toLocaleDateString('es-ES')} 
+                {new Date(formData.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-ES')}
                 <span className="ml-2 text-gray-500">({calculateAge(formData.fecha_nacimiento)} años)</span>
               </p>
             )}
@@ -190,9 +218,8 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
                 name="telefono"
                 value={formData.telefono}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.telefono ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.telefono ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>{formData.telefono}</p>
@@ -209,9 +236,8 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
                 name="direccion"
                 value={formData.direccion}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.direccion ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.direccion ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  }`}
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>{formData.direccion}</p>
@@ -229,7 +255,7 @@ export const PatientProfile = ({ paciente, onUpdate }) => {
           <div>
             <label className={`${Size.MEDIUM} text-gray-700 block mb-2`}>Registro:</label>
             <p className={`${Size.MEDIUM} text-gray-600 bg-gray-100 px-4 py-2 rounded`}>
-              {new Date(formData.fecha_registro).toLocaleDateString('es-ES')}
+              {new Date(formData.fecha_registro + 'T00:00:00').toLocaleDateString('es-ES')}
             </p>
           </div>
         </div>

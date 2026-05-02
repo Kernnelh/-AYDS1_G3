@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MdSearch, MdPeople } from 'react-icons/md';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 import { ApprovedPatientCard } from "./ApprovedPatientCard";
+
+const API = 'http://127.0.0.1:8000';
 
 export const ViewPatientsAdmin = ({ pacientesAprobados, onDeactivate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredPacientes, setFilteredPacientes] = useState(pacientesAprobados);
   const [deactivatedPatients, setDeactivatedPatients] = useState([]);
+
+  const token = localStorage.getItem('token');
 
   const handleSearch = (e) => {
     const query = e.target.value.toLowerCase();
@@ -30,21 +34,73 @@ export const ViewPatientsAdmin = ({ pacientesAprobados, onDeactivate }) => {
     }
   };
 
-  const handleDeactivatePatient = (pacienteId, razon) => {
-    const paciente = filteredPacientes.find(p => p.id_paciente === pacienteId);
-    if (!paciente) return;
+  const handleDeactivatePatient = async (pacienteId, razon) => {
+    try {
+      const res = await fetch(`${API}/api/admin/usuarios/paciente/${pacienteId}/baja`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ razon_baja: razon })
+      });
 
-    console.log(`Paciente dado de baja: ${paciente.nombre}, Motivo: ${razon}`);
-    onDeactivate(pacienteId, razon);
-    
-    setDeactivatedPatients([
-      ...deactivatedPatients,
-      { ...paciente, razon_baja: razon }
-    ]);
+      if (!res.ok) {
+        alert('Error al dar de baja');
+        return;
+      }
 
-    setFilteredPacientes(
-      filteredPacientes.filter(p => p.id_paciente !== pacienteId)
-    );
+      const paciente = filteredPacientes.find(p => p.id_paciente === pacienteId);
+      if (!paciente) return;
+
+      setDeactivatedPatients([
+        ...deactivatedPatients,
+        { ...paciente, razon_baja: razon }
+      ]);
+
+      setFilteredPacientes(
+        filteredPacientes.filter(p => p.id_paciente !== pacienteId)
+      );
+    } catch (err) {
+      console.error('Error al dar de baja paciente:', err);
+      alert('Error de conexión');
+    }
+  };
+
+  const handleUpdatePatient = async (pacienteId, updatedData) => {
+    try {
+      const res = await fetch(`${API}/api/admin/usuarios/paciente/${pacienteId}`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          nombre: updatedData.nombre,
+          apellido: updatedData.apellido,
+          genero: updatedData.genero,
+          telefono: updatedData.telefono,
+          direccion: updatedData.direccion,
+          fecha_nacimiento: updatedData.fecha_nacimiento
+        })
+      });
+
+      if (!res.ok) {
+        alert('Error al actualizar paciente');
+        return;
+      }
+
+      // Actualizar la lista localmente
+      setFilteredPacientes(
+        filteredPacientes.map(p =>
+          p.id_paciente === pacienteId ? updatedData : p
+        )
+      );
+      alert('Paciente actualizado correctamente');
+    } catch (err) {
+      console.error('Error al actualizar paciente:', err);
+      alert('Error de conexión');
+    }
   };
 
   return (
@@ -118,6 +174,7 @@ export const ViewPatientsAdmin = ({ pacientesAprobados, onDeactivate }) => {
               <ApprovedPatientCard
                 paciente={paciente}
                 onDeactivate={handleDeactivatePatient}
+                onUpdate={handleUpdatePatient}
               />
             </motion.div>
           ))}

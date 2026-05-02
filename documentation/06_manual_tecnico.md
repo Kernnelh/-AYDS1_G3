@@ -3,10 +3,9 @@
 Este documento detalla la arquitectura, el modelo de datos y las instrucciones precisas para configurar, levantar y desplegar los tres módulos principales del proyecto **SaludPlus**: Base de Datos, Backend y Frontend.
 
 ---
+#  Base de Datos – salud_plus (Fase 2)
 
-# 🗄️ Base de Datos – salud_plus
-
-## 📌 Modelo Entidad-Relación (Modelo Físico)
+##  Modelo Entidad-Relación (Modelo Físico)
 
 ![Modelo ER](./img/AYD1_P1S12026.png)
 
@@ -16,15 +15,18 @@ Este documento detalla la arquitectura, el modelo de datos y las instrucciones p
 
 ---
 
-# 📖 Descripción General
+#  Descripción General
 
 La base de datos de **salud_plus** está diseñada para soportar:
 
 - Gestión de roles de usuario (Administrador, Médico y Paciente).
 - Sistema de autenticación seguro (incluyendo 2FA para administrador).
-- Aprobación y gestión de estados de los usuarios.
+- Verificación de cuentas mediante tokens de correo electrónico.
+- Aprobación y gestión de estados de los usuarios con validación de documentos (PDFs).
 - Configuración de horarios y días de atención médica.
 - Programación, seguimiento y cancelación de citas médicas.
+- Registro estructurado de tratamientos y recetas médicas.
+- Sistema cruzado de calificaciones y reportes de conducta.
 
 El motor de base de datos utilizado es:
 
@@ -33,9 +35,9 @@ El motor de base de datos utilizado es:
 
 ---
 
-# 🧱 Estructura de Tablas
+#  Estructura de Tablas
 
-## 🛡️ Administrador
+##  Administrador
 Almacena las credenciales de los administradores del sistema, incluyendo su autenticación de dos pasos.
 
 | Campo | Tipo | Descripción |
@@ -47,8 +49,8 @@ Almacena las credenciales de los administradores del sistema, incluyendo su aute
 
 ---
 
-## 👤 Paciente
-Almacena la información personal y de acceso de los pacientes.
+##  Paciente
+Almacena la información personal y de acceso de los pacientes, incluyendo sus documentos de validación.
 
 | Campo | Tipo | Descripción |
 |-------|------|------------|
@@ -60,16 +62,19 @@ Almacena la información personal y de acceso de los pacientes.
 | direccion | VARCHAR(255) | Dirección de residencia |
 | telefono | VARCHAR(15) | Número de contacto |
 | fecha_nacimiento | DATE | Fecha de nacimiento |
-| fotografia | VARCHAR(255) | Ruta/URL de la foto (Opcional) |
+| fotografia | VARCHAR(255) | Ruta/URL de la foto (Obligatorio) |
+| archivo_dpi | VARCHAR(255) | Ruta/URL del DPI en formato PDF (Obligatorio) |
 | correo | VARCHAR(150) | Correo electrónico (Único) |
 | contrasena | VARCHAR(255) | Contraseña encriptada |
+| token_verificacion | VARCHAR(255) | Token único para validación en el primer inicio de sesión |
+| correo_verificado | BOOLEAN | Indica si el usuario validó su correo (Default: FALSE) |
 | estado | ENUM | 'Pendiente', 'Aprobado', 'Rechazado', 'Desactivado' (Default: Pendiente) |
 | fecha_registro | TIMESTAMP | Fecha de creación del usuario |
 
 ---
 
-## 🩺 Medico
-Almacena los datos personales y profesionales de los médicos de la plataforma.
+##  Medico
+Almacena los datos personales, profesionales y documentos de validación de los médicos de la plataforma.
 
 | Campo | Tipo | Descripción |
 |-------|------|------------|
@@ -82,17 +87,20 @@ Almacena los datos personales y profesionales de los médicos de la plataforma.
 | direccion | VARCHAR(255) | Dirección de residencia |
 | telefono | VARCHAR(15) | Número de contacto |
 | fotografia | VARCHAR(255) | Ruta/URL de la foto (Obligatorio) |
+| archivo_cv | VARCHAR(255) | Ruta/URL del Currículum en formato PDF (Obligatorio) |
 | no_colegiado | VARCHAR(20) | Número de colegiado activo (Único) |
 | especialidad | VARCHAR(100) | Especialidad médica |
 | direccion_clinica | VARCHAR(255) | Dirección donde atiende |
 | correo | VARCHAR(150) | Correo electrónico (Único) |
 | contrasena | VARCHAR(255) | Contraseña encriptada |
+| token_verificacion | VARCHAR(255) | Token único para validación en el primer inicio de sesión |
+| correo_verificado | BOOLEAN | Indica si el usuario validó su correo (Default: FALSE) |
 | estado | ENUM | 'Pendiente', 'Aprobado', 'Rechazado', 'Desactivado' (Default: Pendiente) |
 | fecha_registro | TIMESTAMP | Fecha de creación del usuario |
 
 ---
 
-## 🕒 Horario_Medico
+##  Horario_Medico
 Define el rango de horas general en el que atiende un médico.
 
 | Campo | Tipo | Descripción |
@@ -104,7 +112,7 @@ Define el rango de horas general en el que atiende un médico.
 
 ---
 
-## 📅 Dia_Atencion
+##  Dia_Atencion
 Registra los días específicos de la semana en los que el médico ofrece consultas.
 
 | Campo | Tipo | Descripción |
@@ -117,7 +125,7 @@ Registra los días específicos de la semana en los que el médico ofrece consul
 
 ---
 
-## 🏥 Cita
+##  Cita
 Almacena el registro transaccional de las consultas médicas, enlazando al paciente con el médico.
 
 | Campo | Tipo | Descripción |
@@ -128,10 +136,64 @@ Almacena el registro transaccional de las consultas médicas, enlazando al pacie
 | fecha | DATE | Fecha programada para la cita |
 | hora | TIME | Hora exacta de la cita |
 | motivo | TEXT | Razón de la consulta médica |
-| tratamiento | TEXT | Receta o indicaciones (Nulo al inicio) |
 | estado | ENUM | 'Pendiente', 'Atendida', 'Cancelada_Paciente', 'Cancelada_Medico' |
 | fecha_creacion | TIMESTAMP | Cuándo se agendó la cita |
 | fecha_cancelacion| TIMESTAMP | Fecha en la que se canceló (Opcional) |
+
+---
+
+##  Tratamiento
+Registra el diagnóstico emitido por el médico tras atender una cita.
+
+| Campo | Tipo | Descripción |
+|-------|------|------------|
+| id_tratamiento | INT | PK (Autoincremental) |
+| id_cita | INT | FK → Cita(id_cita) (Único) |
+| diagnostico | TEXT | Descripción de la enfermedad o padecimiento detectado |
+| fecha_registro | TIMESTAMP | Fecha y hora en la que se guardó el tratamiento |
+
+---
+
+##  Medicamento_Recetado
+Contiene el detalle individual de cada medicina asignada a un tratamiento específico.
+
+| Campo | Tipo | Descripción |
+|-------|------|------------|
+| id_medicamento | INT | PK (Autoincremental) |
+| id_tratamiento | INT | FK → Tratamiento(id_tratamiento) |
+| nombre | VARCHAR(150)| Nombre comercial o genérico del medicamento |
+| cantidad | VARCHAR(50) | Presentación o unidades (ej. 1 caja, 2 frascos) |
+| tiempo_medicamento| VARCHAR(100)| Duración de la toma (ej. 15 días, 1 mes) |
+| descripcion_dosis | TEXT | Instrucciones de uso y frecuencia de la dosis |
+
+---
+
+##  Calificacion
+Permite almacenar el feedback (estrellas y comentarios) que los pacientes y médicos se otorgan mutuamente tras una cita.
+
+| Campo | Tipo | Descripción |
+|-------|------|------------|
+| id_calificacion | INT | PK (Autoincremental) |
+| id_cita | INT | FK → Cita(id_cita) |
+| autor | ENUM | Indica quién evalúa: 'Paciente' o 'Medico' |
+| estrellas | INT | Valor numérico de 0 a 5 |
+| comentario | TEXT | Observación opcional sobre el servicio/conducta |
+| fecha_creacion | TIMESTAMP | Cuándo se emitió la calificación |
+
+---
+
+##  Reporte
+Almacena las denuncias emitidas por faltas, negligencias o conductas inapropiadas durante una cita médica.
+
+| Campo | Tipo | Descripción |
+|-------|------|------------|
+| id_reporte | INT | PK (Autoincremental) |
+| id_cita | INT | FK → Cita(id_cita) |
+| autor | ENUM | Indica quién denuncia: 'Paciente' o 'Medico' |
+| categoria | ENUM | Lista predefinida de infracciones |
+| explicacion | TEXT | Detalle completo de lo sucedido |
+| estado | VARCHAR(50) | Estado actual del caso (Default: 'Pendiente_Revision') |
+| fecha_creacion | TIMESTAMP | Cuándo se generó el reporte |
 
 ---
 
@@ -157,9 +219,24 @@ Almacena el registro transaccional de las consultas médicas, enlazando al pacie
 - Un médico puede atender múltiples citas de diferentes pacientes.
 - `ON DELETE CASCADE`
 
+### 5️⃣ Cita → Tratamiento
+- Tipo: **1 a 1**
+- Una cita atendida genera un único bloque de diagnóstico/tratamiento.
+- `ON DELETE CASCADE`
+
+### 6️⃣ Tratamiento → Medicamento_Recetado
+- Tipo: **1 a N**
+- Un mismo tratamiento puede contener múltiples medicamentos recetados.
+- `ON DELETE CASCADE`
+
+### 7️⃣ Cita → Calificacion / Reporte
+- Tipo: **1 a N**
+- Una cita puede generar calificaciones y/o reportes cruzados (el paciente califica al médico, y el médico al paciente).
+- `ON DELETE CASCADE`
+
 ---
 
-# 🚀 Cómo levantar la base de datos
+#  Cómo levantar la base de datos
 
 ## 🔹 Opción 1 – Usando MySQL desde consola
 
@@ -171,7 +248,7 @@ mysql -u root -p < schema.sql
 ```
 
 ### 2️⃣ Ejecutar los datos de prueba (Mock Data)
-Para problar la base de datos con los usuarios y citas iniciales para el Sprint 1:
+Para poblrar la base de datos con los usuarios y citas iniciales para el Sprint 2:
 
 ```bash
 mysql -u root -p < data.sql
@@ -210,14 +287,34 @@ docker exec -i saludplus-mysql mysql -u root -proot salud_plus < data.sql
 ```
 
 # Ejecutar motor de MYSQL (server)
-# ⚠️ Recomendaciones para el Development Team
+#  Recomendaciones para el Development Team
 
 - Usar MySQL 8.x para evitar problemas de compatibilidad con ciertas sintaxis.
 - No modificar el schema.sql directamente en producción o local sin antes avisar al equipo en la Daily Scrum.
 - Si se agregan o quitan campos, el responsable debe actualizar el archivo SQL y la imagen del modelo ER (salud_plus_ER.png) en el repositorio.
 - Recordar que la contraseña simulada en el data.sql para todos los usuarios de prueba es: Password123!
+---
+# Backend - Proyecto Análisis y Diseño 1 (AYD1)
 
---- 
+API REST construida con **FastAPI** y **Python** para la gestión de registros médicos, pacientes y un sistema de autenticación seguro utilizando JWT y encriptación SHA-256.
+
+## 🛠️ Tecnologías Utilizadas
+* **Framework:** FastAPI
+* **Lenguaje:** Python 3.10+
+* **Base de Datos:** MySQL
+* **ORM:** SQLAlchemy
+* **Autenticación:** JSON Web Tokens (JWT)
+* **Seguridad:** Passlib (SHA-256)
+
+---
+
+## ⚙️ Requisitos Previos
+Antes de levantar el proyecto, asegúrate de tener instalado:
+* Python 3.10 o superior.
+* Un servidor de MySQL corriendo localmente o en la nube.
+* Git y SourceTree (para el versionamiento).
+
+---
 
 # Backend - Proyecto Análisis y Diseño 1 (AYD1)
 
@@ -286,12 +383,20 @@ DB_PORT=3306
 DB_NAME=nombre_de_tu_base_de_datos
 ```
 
+Este proyecto utiliza notificaciones por correo electrónico en tiempo real. Para que el backend funcione correctamente, debes configurar las variables de entorno.
+
+```
+1. En la carpeta raíz del `backend`, crea un archivo llamado `.env`.
+2. Copia el contenido del archivo `.env.example` y pégalo en tu nuevo `.env`.
+3. Reemplaza los valores de `SENDER_EMAIL` y `SENDER_PASSWORD` con las credenciales de una cuenta de Gmail (usando una Contraseña de Aplicación).
+```
+
 ### 5. Ejecutar servidor local
 ```
 uvicorn app.main:app --reload
 ```
 
-# 📂 Estructura del Proyecto
+#  Estructura del Proyecto
 * app/api/: Controladores y rutas de los endpoints (Auth, Pacientes, Médicos, Admin).
 
 * app/core/: Configuraciones globales y lógica de seguridad (JWT, SHA-256).
@@ -304,14 +409,13 @@ uvicorn app.main:app --reload
 
 * app/services/: Lógica de negocio adicional.
 
-# 🌿 Flujo de Trabajo (Git Flow)
+#  Flujo de Trabajo (Git Flow)
 
 + Nunca trabajar directamente sobre main o develop.
 
 + Crear ramas para cada tarea utilizando el formato: feature/T-XXX-descripcion (ej. feature/T-001.02-registro-paciente).
 
 + Utilizar Conventional Commits para los mensajes (ej. feat(pacientes): ..., fix(auth): ...).
-
 --- 
 
 # Frontend - Guía de Instalación y Ejecución
@@ -341,7 +445,7 @@ uvicorn app.main:app --reload
 ```bash
 npm run dev
 ```
-La aplicación estará disponible en `http://localhost:3000`
+La aplicación estará disponible en `http://localhost:5173`
 
 ### Modo producción
 ```bash
@@ -364,3 +468,31 @@ frontend/
 ├── package.json
 └── README.md
 ```
+
+---
+
+# Ejecución Global con Docker Compose
+
+Para facilitar el despliegue a producción o para miembros del equipo con Docker instalado, el proyecto cuenta con un archivo `docker-compose.yml` en la raíz. Este archivo orquesta el Backend y el Frontend simultáneamente.
+
+### 1. Preparar Variables de Entorno
+Dirígete a la carpeta `/backend`.
+Copia el archivo `.env.example` y renómbralo a `.env`.
+Abre el nuevo archivo `.env` y coloca tu contraseña de MySQL local y asegúrate de que el host sea el interno de Docker:
+`DB_HOST=host.docker.internal`
+
+### 2. Levantar el Proyecto
+Abre una terminal en la **raíz del proyecto** (donde está el `docker-compose.yml`).
+Ejecuta el siguiente comando:
+`docker compose up --build`
+
+Posterior al build, si solamente quieres levantarlo utiliza: 
+`docker compose up`
+
+### 3. Acceder a los servicios
+**Frontend (Vite):** http://localhost:5173
+**Backend (FastAPI Docs):** http://localhost:8000/docs
+
+*Nota:* La base de datos MySQL debe estar encendida en tu máquina física en el puerto 3306 para que el backend de Docker logre conectarse.
+
+---

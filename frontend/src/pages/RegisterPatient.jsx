@@ -8,7 +8,7 @@ import { FaPhotoVideo } from "react-icons/fa";
 import { IoMdMailOpen } from "react-icons/io";
 
 // Estilos y componentes
-import { Size, Background, CButton } from "../styles/Styles";
+import { Size, Background, CButton } from "../styles/styles";
 import { IconButton } from "../components/IconButton";
 import { Input2 } from "../components/Input2";
 import { Button1 } from "../components/Button1";
@@ -18,14 +18,69 @@ import logo2 from "../assets/logo2.png";
 
 export const RegisterPatient = () => {
   const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(false);
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-    const datos = new FormData(e.target);
+    setError(null);
+    setMensaje("");
+    setCargando(true);
 
-    console.log(Object.fromEntries(datos));
+    const form = e.target;
+    const archivoFoto = form.txtFotografiaP.files[0];
+    const archivoDPI = form.txtCvPdf.files[0]; // En tu front el input del DPI se llama txtCvPdf
 
-    setMensaje("Cuenta creada con éxito");
+    // Validaciones del Frontend
+    if (!archivoFoto || !archivoFoto.type.startsWith('image/')) {
+      setError('La fotografía es obligatoria y debe ser una imagen');
+      setCargando(false);
+      return;
+    }
+    if (!archivoDPI || archivoDPI.type !== 'application/pdf') {
+      setError('El archivo del DPI es obligatorio y debe ser PDF');
+      setCargando(false);
+      return;
+    }
+    if (archivoDPI.size > 2 * 1024 * 1024) {
+      setError('El PDF del DPI no debe superar los 2MB');
+      setCargando(false);
+      return;
+    }
+
+    // Empaquetamos TODOS los datos en un FormData para el backend
+    const formData = new FormData();
+    formData.append("nombre", form.txtNombreP.value);
+    formData.append("apellido", form.txtApellidoP.value);
+    formData.append("dpi", form.txtDPIP.value);
+    formData.append("genero", form.txtGeneroP.value);
+    formData.append("direccion", form.txtDireccionP.value);
+    formData.append("telefono", form.txtTelefonoP.value);
+    formData.append("fecha_nacimiento", form.txtNacimientoP.value);
+    formData.append("correo", form.txtCorreoP.value);
+    formData.append("contrasena", form.txtPasswordP.value);
+    formData.append("fotografia", archivoFoto);
+    formData.append("archivo_dpi", archivoDPI); // Coincide con el backend
+
+    try {
+      const respuesta = await fetch("http://127.0.0.1:8000/pacientes/registro", {
+        method: "POST",
+        body: formData,
+      });
+
+      const datos = await respuesta.json();
+
+      if (respuesta.ok) {
+        setMensaje("¡Cuenta creada con éxito! Espera la aprobación del administrador.");
+        form.reset();
+      } else {
+        setError(datos.detail || "Error al registrar");
+      }
+    } catch (err) {
+      setError("Error de conexión con el servidor.");
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -95,6 +150,34 @@ export const RegisterPatient = () => {
                   </div>
                 </div>
 
+                {/* DPI en PDF */}
+                <div className="flex flex-col lg:flex-row gap-x-5">
+                  <div className="flex-1">
+                    {Input2(
+                      "file",
+                      "txtCvPdf",
+                      "DPI en PDF",
+                      <MdTextSnippet className="text-gray-700 text-xl" />,
+                      null,
+                      {
+                        accept: ".pdf,application/pdf",
+                        onChange: (e) => {
+                          const file = e.target.files[0];
+                          if (file && file.size > 2 * 1024 * 1024) {
+                            setError('El PDF del DPI no debe superar los 2MB');
+                            e.target.value = '';
+                          } else {
+                            setError(null);
+                          }
+                        }
+                      }
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      Solo archivos PDF · Peso máximo: 2MB
+                    </p>
+                  </div>
+                </div>
+
                 {/* Correo electronico y Contraseña */}
                 <div className="flex flex-col lg:flex-row gap-x-5">
                   <div className="flex-1">
@@ -119,8 +202,21 @@ export const RegisterPatient = () => {
 
               {/* Botón Crear Cuenta */}
               <div className="flex justify-center w-full mb-2">
-                <Button1 nombre='Crear cuenta Paciente' id='crearCuentaP' type='submit' link='' color={CButton.MATE} />
+                <Button1
+                  nombre={cargando ? 'Registrando...' : 'Crear cuenta Paciente'}
+                  id='crearCuentaP'
+                  type='submit'
+                  link=''
+                  color={CButton.MATE}
+                />
               </div>
+
+              {error && (
+                <div className="text-red-500 font-semibold text-center mt-2">
+                  {error}
+                </div>
+              )}
+
               {mensaje && (
                 <div className="text-green-600 font-semibold text-center mt-2">
                   {mensaje}

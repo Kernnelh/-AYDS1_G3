@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
 export const MedicProfile = ({ medico, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -163,7 +163,7 @@ export const MedicProfile = ({ medico, onUpdate }) => {
               />
             ) : (
               <p className={`${Size.MEDIUM} text-gray-600`}>
-                {new Date(formData.fecha_nacimiento).toLocaleDateString('es-ES')}
+                {new Date(formData.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-ES')}
                 <span className="ml-2 text-gray-500">({calculateAge(formData.fecha_nacimiento)} años)</span>
               </p>
             )}

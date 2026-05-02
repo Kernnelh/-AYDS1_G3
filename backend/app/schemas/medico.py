@@ -22,3 +22,13 @@ class HorarioCrear(BaseModel):
     dias: List[str]  # Ejemplo: ["Lunes", "Martes", "Miércoles"]
     hora_inicio: time # Ejemplo: "08:00:00"
     hora_fin: time    # Ejemplo: "17:00:00"
+
+class MedicoUpdate(BaseModel):
+    nombre: str
+    apellido: str
+    telefono: str
+    direccion: str
+    direccion_clinica: str
+    especialidad: str
+    genero: GeneroEnum
+    fecha_nacimiento: date

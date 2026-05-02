@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Size } from "../styles/Styles";
+import { Size } from "../styles/styles";
 
-export const ActiveAppointments = ({ appointments, onCancel, medicos }) => {
+export const ActiveAppointments = ({ appointments, onCancel }) => {
   const [cancelingId, setCancelingId] = useState(null);
 
   const activeAppointments = appointments.filter(
@@ -20,9 +20,6 @@ export const ActiveAppointments = ({ appointments, onCancel, medicos }) => {
     setCancelingId(null);
   };
 
-  const getDoctorInfo = (idMedico) => {
-    return medicos.find(m => m.id_medico === idMedico);
-  };
 
   return (
     <div className="space-y-6">
@@ -41,7 +38,6 @@ export const ActiveAppointments = ({ appointments, onCancel, medicos }) => {
           <div className="space-y-4">
             <AnimatePresence>
               {pendingAppointments.map((appointment) => {
-                const doctor = getDoctorInfo(appointment.id_medico);
                 const isConfirmingCancel = cancelingId === appointment.id_cita;
 
                 return (
@@ -55,14 +51,14 @@ export const ActiveAppointments = ({ appointments, onCancel, medicos }) => {
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <h3 className={`${Size.LARGE} font-bold text-gray-800`}>
-                          Dr(a). {doctor?.nombre} {doctor?.apellido}
+                          {appointment.medico}
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                           <div>
                             <p className={`${Size.MEDIUM} text-gray-600`}>Fecha:</p>
                             <p className={`${Size.LARGE} font-semibold text-gray-800`}>
-                              {new Date(appointment.fecha).toLocaleDateString('es-ES')}
+                              {new Date(appointment.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                             </p>
                           </div>
 
@@ -76,7 +72,7 @@ export const ActiveAppointments = ({ appointments, onCancel, medicos }) => {
                           <div className="md:col-span-2">
                             <p className={`${Size.MEDIUM} text-gray-600`}>Clínica:</p>
                             <p className={`${Size.MEDIUM} text-gray-800`}>
-                              {doctor?.direccion_clinica}
+                              {appointment.direccion_clinica}
                             </p>
                           </div>
 

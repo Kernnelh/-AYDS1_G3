@@ -7,7 +7,7 @@ from app.db.database import get_db, engine, Base
 from app.core.security import create_access_token #de aquí se importa la función para crear tokens JWT
 
 from fastapi.staticfiles import StaticFiles
-from app.api.routes import pacientes, medicos, upload, admin, auth
+from app.api.routes import pacientes, medicos, upload, admin, auth, citas
 
 
 # Esto creará las tablas físicamente en MySQL
@@ -20,10 +20,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"], # Agrega aquí los puertos que use tu equipo de frontend
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"], # Permite enviar tokens de autorización y multipart/form-data
 )
 
 @app.get("/", tags=["Inicio"])
@@ -53,6 +53,7 @@ app.include_router(pacientes.router, prefix="/pacientes", tags=["Pacientes"])
 app.include_router(medicos.router, prefix="/api/medicos", tags=["Médicos"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Administrador"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Autenticación"])
+app.include_router(citas.router, prefix="/api", tags=["Citas"])
 
 
 # Exponer la carpeta estática para las fotos

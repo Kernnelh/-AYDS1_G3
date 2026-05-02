@@ -1,13 +1,27 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.responses import StreamingResponse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+import io
+from app.models.cita import Cita, EstadoCitaEnum
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from app.db.database import get_db
-from sqlalchemy import text
+from sqlalchemy import text, func, desc
 from app.db.database import get_db
 from app.models.medico import Medico, EstadoUsuarioEnum as EstadoMedicoEnum
 from app.models.paciente import Paciente, EstadoUsuarioEnum as EstadoPacienteEnum
+from app.models.reporte import Reporte
+from app.models.calificacion import Calificacion
 from app.schemas.admin import ActualizarEstado
 from app.core.security import verificar_token
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# Clave secreta para el segundo factor de autenticación (2FA)
+ADMIN_2FA_KEY = os.getenv("SECRET_KEY")
+
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
@@ -28,20 +42,16 @@ async def validar_segundo_factor(
 
     # 3. Buscar al administrador en la base de datos
     # Como no tenemos modelo de SQLAlchemy para Admin, usamos una consulta SQL directa
-    resultado = db.execute(
-        text("SELECT contrasena_encrp FROM Administrador WHERE usuario = :user"), 
+    admin = db.execute(
+        text("SELECT usuario FROM Administrador WHERE usuario = :user"),
         {"user": usuario}
     ).fetchone()
 
-    if not resultado:
+    if not admin:
         raise HTTPException(status_code=404, detail="Administrador no encontrado")
 
-    hash_guardado = resultado[0]
-
-    # 4. Validar la contraseña del archivo contra el hash de la base de datos
-    # NOTA: Si el profesor pide que el archivo contenga literalmente el texto encriptado (el hash), 
-    # cambia esta línea por: if contrasena_archivo != hash_guardado:
-    if not pwd_context.verify(contrasena_archivo, hash_guardado):
+    # 4. Validar contra la clave quemada en .env
+    if contrasena_archivo != ADMIN_2FA_KEY:
         raise HTTPException(status_code=401, detail="La contraseña del archivo es incorrecta")
 
     # Si todo está bien, le damos acceso
@@ -152,3 +162,210 @@ def dar_de_baja_usuario(
         "mensaje": f"{tipo_usuario.capitalize()} dado de baja exitosamente", 
         "nuevo_estado": usuario_db.estado
     }
+@router.get("/reportes/medicos-mas-atendidos", tags=["Administrador", "Reportes"])
+def reporte_top_medicos_pdf(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Genera un PDF con los médicos que más pacientes han atendido"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo administradores.")
+
+    # 1. Consultar la base de datos (como lo teníamos antes)
+    conteo = db.query(
+        Medico.nombre, 
+        Medico.apellido, 
+        func.count(Cita.id_cita).label("total_atendidos")
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .filter(Cita.estado == EstadoCitaEnum.Atendida)\
+     .group_by(Medico.id_medico)\
+     .order_by(desc("total_atendidos"))\
+     .limit(10).all()
+
+    # 2. Crear el PDF en memoria
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Diseño del Título
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, 750, "Reporte: Médicos con más pacientes atendidos")
+    c.setFont("Helvetica", 10)
+    c.drawString(50, 735, "Clínica Médica - Generado automáticamente")
+    
+    # Diseño de la cabecera de la tabla
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, 690, "Nombre del Médico")
+    c.drawString(400, 690, "Citas Atendidas")
+    c.line(50, 680, 500, 680) # Línea separadora
+    
+    # Imprimir los datos
+    c.setFont("Helvetica", 12)
+    y = 650
+    for fila in conteo:
+        nombre = f"Dr(a). {fila.nombre} {fila.apellido}"
+        total = str(fila.total_atendidos)
+        
+        c.drawString(50, y, nombre)
+        c.drawString(400, y, total)
+        y -= 25 # Moverse hacia abajo para la siguiente fila
+        
+    c.save()
+    buffer.seek(0)
+
+    # 3. Retornar el archivo PDF
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": "attachment; filename=reporte_medicos.pdf"}
+    )
+
+
+@router.get("/reportes/especialidades-mas-solicitadas", tags=["Administrador", "Reportes"])
+def reporte_top_especialidades_pdf(
+    db: Session = Depends(get_db),
+    usuario_actual: dict = Depends(verificar_token)
+):
+    """Genera un PDF con las especialidades que más citas han generado"""
+    if usuario_actual.get("rol") != "administrador":
+        raise HTTPException(status_code=403, detail="Acceso denegado. Solo administradores.")
+
+    # 1. Consultar la base de datos
+    conteo = db.query(
+        Medico.especialidad, 
+        func.count(Cita.id_cita).label("total_citas")
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .group_by(Medico.especialidad)\
+     .order_by(desc("total_citas")).all()
+
+    # 2. Crear el PDF en memoria
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Diseño del Título
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, 750, "Reporte: Especialidades más solicitadas")
+    c.setFont("Helvetica", 10)
+    c.drawString(50, 735, "Clínica Médica - Generado automáticamente")
+    
+    # Diseño de la cabecera de la tabla
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, 690, "Especialidad")
+    c.drawString(400, 690, "Total de Citas Generadas")
+    c.line(50, 680, 500, 680) 
+    
+    # Imprimir los datos
+    c.setFont("Helvetica", 12)
+    y = 650
+    for fila in conteo:
+        especialidad = fila.especialidad
+        total = str(fila.total_citas)
+        
+        c.drawString(50, y, especialidad)
+        c.drawString(400, y, total)
+        y -= 25 
+        
+    c.save()
+    buffer.seek(0)
+
+    # 3. Retornar el archivo PDF
+    return StreamingResponse(
+        buffer, 
+        media_type="application/pdf", 
+        headers={"Content-Disposition": "attachment; filename=reporte_especialidades.pdf"}
+    )
+
+@router.get("/reportes", tags=["Administrador"])
+def listar_reportes(db: Session = Depends(get_db)):
+    # Traemos todos los reportes, ordenados del más reciente al más antiguo
+    reportes = db.query(Reporte).order_by(Reporte.fecha_creacion.desc()).all()
+    
+    if not reportes:
+        return {"mensaje": "No hay reportes registrados en el sistema.", "reportes": []}
+        
+    return {"reportes": reportes}
+
+
+@router.get("/calificaciones/promedios", tags=["Administrador"])
+def promedios_globales(db: Session = Depends(get_db)):
+    # Calculamos el promedio global usando func.avg de SQLAlchemy
+    promedio_general = db.query(func.avg(Calificacion.estrellas)).scalar()
+    
+    # Contamos cuántas calificaciones existen en total
+    total_calificaciones = db.query(Calificacion).count()
+    
+    # Si no hay calificaciones, promedio_general será None, lo manejamos devolviendo 0.0
+    promedio_seguro = round(promedio_general, 2) if promedio_general else 0.0
+    
+    return {
+        "promedio_global": promedio_seguro,
+        "total_calificaciones": total_calificaciones
+    }
+
+
+@router.get("/usuarios/activos", tags=["Administrador"])
+def listar_usuarios_activos(db: Session = Depends(get_db)):
+    # Buscar pacientes activos/aprobados
+    pacientes_activos = db.query(Paciente).filter(Paciente.estado == EstadoPacienteEnum.Aprobado).all()
+    
+    # Buscar médicos activos/aprobados
+    medicos_activos = db.query(Medico).filter(Medico.estado == EstadoMedicoEnum.Aprobado).all()
+    
+    return {
+        "pacientes_activos": pacientes_activos,
+        "medicos_activos": medicos_activos,
+        "total_activos": len(pacientes_activos) + len(medicos_activos)
+    }
+
+@router.get("/reportes/analiticas/rendimiento-medicos", tags=["Administrador", "Analiticas"])
+def analitica_rendimiento_medicos(db: Session = Depends(get_db)):
+    # SQL Equivalente: 
+    # SELECT m.nombre, m.apellido, AVG(c.estrellas), COUNT(c.id_calificacion)
+    # FROM Medico m JOIN Cita ci ON m.id = ci.id_medico JOIN Calificacion c ON ci.id = c.id_cita
+    # GROUP BY m.id ORDER BY AVG(c.estrellas) DESC
+    
+    resultados = db.query(
+        Medico.id_medico,
+        Medico.nombre,
+        Medico.apellido,
+        Medico.especialidad,
+        func.round(func.avg(Calificacion.estrellas), 2).label('promedio_estrellas'),
+        func.count(Calificacion.id_calificacion).label('total_evaluaciones')
+    ).join(Cita, Medico.id_medico == Cita.id_medico)\
+     .join(Calificacion, Cita.id_cita == Calificacion.id_cita)\
+     .group_by(Medico.id_medico, Medico.nombre, Medico.apellido, Medico.especialidad)\
+     .order_by(desc('promedio_estrellas'))\
+     .all()
+
+    # Formateamos la salida para que el frontend la consuma fácil
+    reporte = []
+    for row in resultados:
+        reporte.append({
+            "id_medico": row.id_medico,
+            "medico": f"Dr/Dra. {row.nombre} {row.apellido}",
+            "especialidad": row.especialidad,
+            "promedio": float(row.promedio_estrellas),
+            "evaluaciones": row.total_evaluaciones
+        })
+
+    return {"data_grafico": reporte}
+
+
+@router.get("/reportes/analiticas/incidentes", tags=["Administrador", "Analiticas"])
+def analitica_incidentes_categoria(db: Session = Depends(get_db)):
+    # SQL Equivalente:
+    # SELECT categoria, COUNT(id_reporte) FROM Reporte GROUP BY categoria
+    
+    resultados = db.query(
+        Reporte.categoria,
+        func.count(Reporte.id_reporte).label('cantidad')
+    ).group_by(Reporte.categoria).all()
+
+    reporte = []
+    for row in resultados:
+        # row.categoria devuelve el Enum, usamos .value para obtener el string
+        reporte.append({
+            "categoria": row.categoria.value if hasattr(row.categoria, 'value') else row.categoria,
+            "cantidad": row.cantidad
+        })
+
+    return {"data_grafico": reporte}
